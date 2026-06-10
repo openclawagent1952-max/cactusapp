@@ -292,12 +292,24 @@ button:hover {
 .level-badge.caution { background: #fef9c3; color: #854d0e; }
 .level-badge.danger { background: #fee2e2; color: #991b1b; }
 
-/* Weather Grid - 5 items */
+/* Weather Grid - 6 items */
 .weather-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 12px;
     margin-bottom: 20px;
+}
+
+@media (max-width: 1200px) {
+    .weather-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .weather-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
 }
 
 .weather-item {
@@ -369,6 +381,12 @@ button:hover {
   color: var(--evergreen);
 }
 
+.exception-item.cold {
+  background: #dbeafe;
+  border-left: 4px solid #3b82f6;
+  color: #1e40af;
+}
+
 .exception-item.heat {
   background: #fef9c3;
   border-left: 4px solid #eab308;
@@ -385,6 +403,18 @@ button:hover {
   background: #e0f2fe;
   border-left: 4px solid #0ea5e9;
   color: #0369a1;
+}
+
+.exception-item.volatility {
+  background: #f3e8ff;
+  border-left: 4px solid #a855f7;
+  color: #6b21a8;
+}
+
+.exception-item.soil {
+  background: #dcfce7;
+  border-left: 4px solid #22c55e;
+  color: #15803d;
 }
 
 .exception-icon {
@@ -412,6 +442,24 @@ button:hover {
 }
 
 /* Alerts */
+.alert.cold {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #93c5fd;
+}
+
+.alert.volatility {
+  background: #f3e8ff;
+  color: #6b21a8;
+  border: 1px solid #d8b4fe;
+}
+
+.alert.soil {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
 .alert {
   padding: 12px 16px;
   border-radius: 8px;

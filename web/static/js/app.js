@@ -181,6 +181,11 @@ function renderCurrent(current) {
                 <div class="stat-value">${current.cloudcover}%</div>
                 <div class="stat-label">Cloud Cover</div>
             </div>
+            <div class="stat">
+                <div class="stat-icon">🌡️</div>
+                <div class="stat-value">${Math.round(current.pressure || 1013)}</div>
+                <div class="stat-label">Pressure (hPa)</div>
+            </div>
         </div>
     `;
 }
@@ -206,9 +211,13 @@ function renderForecast(advisories) {
                 const exceptionItems = data.exceptions.map(exc => {
                     let excClass = 'exception-item';
                     if (exc.includes('❄️')) excClass += ' frost';
+                    else if (exc.includes('🧊')) excClass += ' cold';
                     else if (exc.includes('🔥')) excClass += ' heat';
                     else if (exc.includes('🦠')) excClass += ' rot';
                     else if (exc.includes('💧')) excClass += ' humidity';
+                    else if (exc.includes('📊')) excClass += ' volatility';
+                    else if (exc.includes('🌡️')) excClass += ' soil';
+                    else if (exc.includes('🌙')) excClass += ' humidity';
 
                     return '<div class="' + excClass + '">' +
                         '<span class="exception-icon">' + exc.split(' ')[0] + '</span>' +
@@ -240,20 +249,20 @@ function renderForecast(advisories) {
                     '<div class="weather-value">' + Math.round(highTemp) + '°</div>' +
                 '</div>' +
                 '<div class="weather-item">' +
+                    '<div class="weather-label">Low</div>' +
+                    '<div class="weather-value">' + Math.round(lowTemp) + '°</div>' +
+                '</div>' +
+                '<div class="weather-item">' +
+                    '<div class="weather-label">Swing</div>' +
+                    '<div class="weather-value">' + Math.round(a.temp_swing || (highTemp - lowTemp)) + '°</div>' +
+                '</div>' +
+                '<div class="weather-item">' +
                     '<div class="weather-label">Humidity</div>' +
                     '<div class="weather-value">' + Math.round(a.humidity) + '%</div>' +
                 '</div>' +
                 '<div class="weather-item">' +
                     '<div class="weather-label">Precip</div>' +
                     '<div class="weather-value">' + precip + '"</div>' +
-                '</div>' +
-                '<div class="weather-item">' +
-                    '<div class="weather-label">Wind</div>' +
-                    '<div class="weather-value">' + Math.round(a.wind || 0) + ' ' + (a.speed_symbol || 'mph') + '</div>' +
-                '</div>' +
-                '<div class="weather-item">' +
-                    '<div class="weather-label">Clouds</div>' +
-                    '<div class="weather-value">' + Math.round(a.cloudcover || 0) + '%</div>' +
                 '</div>' +
             '</div>' +
 

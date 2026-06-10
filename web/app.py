@@ -287,51 +287,6 @@ def geocode_location(location_str):
     except Exception as e:
         print(f"Geocode error: {e}")
         return None
-        if match and match.group(2) in us_state_codes:
-            normalized = f"{match.group(1).strip().title()}, {match.group(2)}"
-        
-        search_terms = [normalized, original, original.split(',')[0].strip()]
-        seen = set()
-        
-        for term in search_terms:
-            term_lower = term.lower()
-            if term_lower in seen or len(term) < 2:
-                continue
-            seen.add(term_lower)
-            
-            url = "https://geocoding-api.open-meteo.com/v1/search"
-            resp = requests.get(url, params={"name": term.replace(' ', '+'), "count": 5, "language": "en"}, timeout=10)
-            data = resp.json()
-            
-            if "results" in data and data["results"]:
-                for result in data["results"]:
-                    result_type = result.get("feature_code", "")
-                    country = result.get("country", "")
-                    
-                    # Skip countries/regions, only cities
-                    if result_type in ["PCLI", "PCLD", "PCLF", "TERR", "CONT"]:
-                        continue
-                    if not result_type.startswith("PPL") and result_type not in ["ADM2", "ADM3", "ADM4"]:
-                        continue
-                    
-                    # Format display name
-                    admin1 = result.get("admin1", "")
-                    if country == "United States" and admin1:
-                        display_name = f"{result.get('name', term)}, {admin1}"
-                    else:
-                        display_name = f"{result.get('name', term)}, {country}"
-                    
-                    return {
-                        "lat": result["latitude"],
-                        "lon": result["longitude"],
-                        "name": display_name,
-                        "country": country,
-                        "use_fahrenheit": country in FAHRENHEIT_COUNTRIES
-                    }
-        return None
-    except Exception as e:
-        print(f"Geocode error: {e}")
-        return None
 
 
 def format_date(date_str, country):
@@ -344,7 +299,7 @@ def format_date(date_str, country):
 
 
 def get_weather(lat, lon, use_fahrenheit):
-    """Get weather with correct units"""
+    """Get weather with correct units - includes humidity extremes and soil temp"""
     try:
         url = "https://api.open-meteo.com/v1/forecast"
         units = get_unit_config("United States" if use_fahrenheit else "Other")
@@ -352,8 +307,8 @@ def get_weather(lat, lon, use_fahrenheit):
         params = {
             "latitude": lat,
             "longitude": lon,
-            "daily": "temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,precipitation_sum,weather_code,cloudcover_mean,windspeed_10m_max",
-            "current": "temperature_2m,relative_humidity_2m,windspeed_10m",
+            "daily": "temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,relative_humidity_2m_min,relative_humidity_2m_max,precipitation_sum,weather_code,cloudcover_mean,windspeed_10m_max,soil_temperature_0cm",
+            "current": "temperature_2m,relative_humidity_2m,windspeed_10m,surface_pressure",
             "forecast_days": 7,
             "temperature_unit": units["temp_unit"],
             "windspeed_unit": units["speed_unit"],
@@ -429,7 +384,7 @@ def get_forecast():
     if not weather:
         return jsonify({"error": "Weather unavailable"}), 503
     
-    # Parse current
+    # Parse current - add pressure for storm tracking
     current_data = weather.get("current", {})
     current = {
         "temp": current_data.get("temperature_2m", 20),
@@ -437,6 +392,7 @@ def get_forecast():
         "wind": current_data.get("windspeed_10m", 0),
         "cloudcover": current_data.get("cloudcover", 0),
         "weather_code": current_data.get("weather_code", 0),
+        "pressure": current_data.get("surface_pressure", 1013),
         "location": {"city": loc_data["name"], "region": loc_data["country"]},
         "temp_symbol": units["temp_symbol"],
         "speed_symbol": units["speed_symbol"]
@@ -450,14 +406,24 @@ def get_forecast():
         day_max = daily["temperature_2m_max"][i]
         day_min = daily["temperature_2m_min"][i]
         humidity = daily["relative_humidity_2m_mean"][i]
+        humidity_min = daily.get("relative_humidity_2m_min", [humidity]*7)[i]
+        humidity_max = daily.get("relative_humidity_2m_max", [humidity]*7)[i]
+        soil_temp = daily.get("soil_temperature_0cm", [day_min]*7)[i]
         precip = daily.get("precipitation_sum", [0]*7)[i]
+        
+        # Temperature volatility (daily swing)
+        temp_swing = day_max - day_min
         
         day_data = {
             "date": format_date(daily["time"][i], loc_data["country"]),
             "day_of_week": datetime.strptime(daily["time"][i], "%Y-%m-%d").strftime("%A"),
             "temp_max": day_max,
             "temp_min": day_min,
+            "temp_swing": temp_swing,
             "humidity": humidity,
+            "humidity_min": humidity_min,
+            "humidity_max": humidity_max,
+            "soil_temp": soil_temp,
             "precipitation": precip,
             "wind": daily.get("windspeed_10m_max", [0]*7)[i],
             "cloudcover": daily.get("cloudcover_mean", [0]*7)[i],
@@ -479,22 +445,45 @@ def get_forecast():
                 hum_min = sp_data["humidity_optimal"]["min"]
                 hum_max = sp_data["humidity_optimal"]["max"]
                 
-                # Frost (3° buffer)
+                # Low temperature alerts - check if below optimal minimum
+                optimal_min = sp_data["temp_optimal"]["day_min"]
+                
+                # Frost (3° buffer for warning, critical when below threshold)
                 if day_min < frost_thresh + (3 if use_fahrenheit else 2):
                     if day_min < frost_thresh:
-                        exceptions.append(f"❄️ CRITICAL: {day_min}{units['temp_symbol']} below frost threshold ({frost_thresh}{units['temp_symbol']})")
+                        exceptions.append(f"❄️ CRITICAL FROST: {day_min}{units['temp_symbol']} below frost threshold ({frost_thresh}{units['temp_symbol']})")
                     else:
-                        exceptions.append(f"❄️ Frost warning: Approaching {frost_thresh}{units['temp_symbol']}")
+                        exceptions.append(f"❄️ FROST WARNING: {day_min}{units['temp_symbol']} approaching threshold ({frost_thresh}{units['temp_symbol']})")
+                # Cold but not freezing - below optimal minimum
+                elif day_min < optimal_min - (5 if use_fahrenheit else 3):
+                    exceptions.append(f"🧊 COLD STRESS: {day_min}{units['temp_symbol']} well below optimal minimum ({optimal_min}{units['temp_symbol']})")
+                elif day_min < optimal_min:
+                    exceptions.append(f"🧊 Cool temps: {day_min}{units['temp_symbol']} below optimal minimum ({optimal_min}{units['temp_symbol']})")
                 
                 # Heat
                 if day_max > heat_thresh:
                     exceptions.append(f"🔥 Heat stress: {day_max}{units['temp_symbol']} exceeds {heat_thresh}{units['temp_symbol']}")
                 
-                # Humidity
+                # Temperature volatility - rapid swings stress plants
+                if temp_swing > (40 if use_fahrenheit else 22):
+                    exceptions.append(f"📊 Extreme temp swing: {temp_swing:.0f}{units['temp_symbol']} daily range stresses plants")
+                elif temp_swing > (30 if use_fahrenheit else 17):
+                    exceptions.append(f"📊 Large temp swing: {temp_swing:.0f}{units['temp_symbol']} daily range")
+                
+                # Humidity - track mean AND extremes
                 if humidity > hum_max + 5:
                     exceptions.append(f"💧 High humidity ({humidity}%): exceeds {hum_max}%")
                 elif humidity < hum_min - 5:
                     exceptions.append(f"💧 Low humidity ({humidity}%): below {hum_min}%")
+                
+                # Night humidity spike (dew/rot risk) - when min humidity is much higher than mean
+                if humidity_min < hum_min and humidity_max > hum_max + 10:
+                    exceptions.append(f"🌙 Humidity swing: {humidity_min}%→{humidity_max}% - rot risk if wet")
+                
+                # Soil temperature vs air temp (roots freeze before stems show damage)
+                soil_air_diff = soil_temp - day_min
+                if soil_temp < frost_thresh and day_min > frost_thresh + 2:
+                    exceptions.append(f"🌡️ Soil freeze risk: {soil_temp:.0f}{units['temp_symbol']} soil vs {day_min}{units['temp_symbol']} air - roots exposed!")
                 
                 if exceptions:
                     species_exceptions[sp] = {
@@ -503,10 +492,24 @@ def get_forecast():
                     }
         
         day_data["species_exceptions"] = species_exceptions
-        day_data["risk_level"] = "danger" if any("❄️ CRITICAL" in str(e) for e in species_exceptions.values()) else "caution" if species_exceptions else "optimal"
         
-        # Generate daily note
+        # Determine risk level
+        risk_level = "optimal"
+        for sp_data in species_exceptions.values():
+            for exc in sp_data.get("exceptions", []):
+                if "CRITICAL FROST" in exc or "Soil freeze risk" in exc:
+                    risk_level = "danger"
+                    break
+                elif any(x in exc for x in ["FROST WARNING", "COLD STRESS", "Heat stress", 
+                                             "High humidity", "Low humidity", "rot risk",
+                                             "Extreme temp swing", "Large temp swing"]):
+                    risk_level = "caution"
+        day_data["risk_level"] = risk_level
+        
+        # Generate daily note - comprehensive assessment
         note_parts = []
+        
+        # High temp assessment
         if day_max > (90 if use_fahrenheit else 32):
             note_parts.append(f"Hot day ahead ({day_max}{units['temp_symbol']}).")
         elif day_max > (80 if use_fahrenheit else 27):
@@ -514,6 +517,27 @@ def get_forecast():
         else:
             note_parts.append(f"Mild day ({day_max}{units['temp_symbol']}).")
         
+        # Low temp assessment (critical for frost zones!)
+        if day_min < (35 if use_fahrenheit else 2):
+            note_parts.append(f"⚠️ Cold night ({day_min}{units['temp_symbol']}) - protect plants!")
+        elif day_min < (50 if use_fahrenheit else 10):
+            note_parts.append(f"Cool night ({day_min}{units['temp_symbol']}) - growth slows.")
+        
+        # Temperature volatility
+        if temp_swing > (40 if use_fahrenheit else 22):
+            note_parts.append(f"⚡ Extreme temp swing ({temp_swing:.0f}°) - stress risk.")
+        elif temp_swing > (30 if use_fahrenheit else 17):
+            note_parts.append(f"Large temp swing ({temp_swing:.0f}°).")
+        
+        # Soil temperature concern
+        if soil_temp < (40 if use_fahrenheit else 4) and day_min > (40 if use_fahrenheit else 4):
+            note_parts.append(f"🌡️ Soil temp ({soil_temp:.0f}°) colder than air - root caution.")
+        
+        # Humidity volatility
+        if humidity_max - humidity_min > 40:
+            note_parts.append(f"💧 Humidity swings {humidity_min}%→{humidity_max}% - watch rot.")
+        
+        # Precipitation
         if precip > (0.2 if use_fahrenheit else 5):
             note_parts.append(f"Rain expected ({precip}{units['precip_symbol']}). Skip watering.")
         elif precip > 0:
