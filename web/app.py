@@ -477,7 +477,7 @@ def get_forecast():
                 # Low temperature alerts - check if below optimal minimum
                 optimal_min = sp_data["temp_optimal"]["day_min"]
                 
-                # Frost (3° buffer for warning, critical when below threshold)
+                # Frost (3° buffer for warning on both heat and cold)
                 if day_min < frost_thresh + (3 if use_fahrenheit else 2):
                     if day_min < frost_thresh:
                         exceptions.append(f"❄️ CRITICAL FROST: {day_min}{units['temp_symbol']} below frost threshold ({frost_thresh}{units['temp_symbol']})")
@@ -489,10 +489,10 @@ def get_forecast():
                 elif day_min < optimal_min:
                     exceptions.append(f"🧊 Cool temps: {day_min}{units['temp_symbol']} below optimal minimum ({optimal_min}{units['temp_symbol']})")
                 
-                # Heat - alert when exceeding threshold, warning when approaching (within 5°F/3°C)
+                # Heat - alert when exceeding threshold, warning when approaching (within 3°F/2°C)
                 if day_max > heat_thresh:
                     exceptions.append(f"🔥 Heat stress: {day_max}{units['temp_symbol']} exceeds {heat_thresh}{units['temp_symbol']}")
-                elif day_max > heat_thresh - (5 if use_fahrenheit else 3):
+                elif day_max > heat_thresh - (3 if use_fahrenheit else 2):
                     exceptions.append(f"🔥 Heat warning: {day_max}{units['temp_symbol']} approaching threshold ({heat_thresh}{units['temp_symbol']})")
                 
                 # Temperature volatility - rapid swings stress plants
@@ -533,8 +533,7 @@ def get_forecast():
                     risk_level = "danger"
                     break
                 elif any(x in exc for x in ["FROST WARNING", "COLD STRESS", "Heat stress", 
-                                             "High humidity", "Low humidity", "rot risk",
-                                             "Extreme temp swing", "Large temp swing", "Heat warning"]):
+                                             "rot risk", "Extreme temp swing", "Large temp swing", "Heat warning"]):
                     risk_level = "caution"
         day_data["risk_level"] = risk_level
         
