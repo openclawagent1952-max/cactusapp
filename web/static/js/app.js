@@ -249,8 +249,14 @@ function renderForecast(advisories) {
                         exceptionCount++;
                         spData.exceptions.forEach(exc => {
                             let excClass = 'exception-item';
-                            if (exc.includes('❄️')) excClass += ' frost';
-                            else if (exc.includes('🧊')) excClass += ' cold';
+                            
+                            // Heat alerts - 3 levels
+                            if (exc.includes('❄️ CRITICAL FROST')) excClass += ' critical-cold';
+                            else if (exc.includes('❄️ FROST WARNING')) excClass += ' frost';
+                            else if (exc.includes('🧊 COLD STRESS')) excClass += ' cold';
+                            else if (exc.includes('🧊 Cool temps')) excClass += ' cool';
+                            else if (exc.includes('🔥 Heat stress')) excClass += ' heat-critical';
+                            else if (exc.includes('🔥 Heat warning')) excClass += ' heat-warning';
                             else if (exc.includes('🔥')) excClass += ' heat';
                             else if (exc.includes('🦠')) excClass += ' rot';
                             else if (exc.includes('💧') || exc.includes('🌙')) excClass += ' humidity';
