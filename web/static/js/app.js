@@ -1,9 +1,9 @@
 /**
  * Cactus Weather Advisor - v1.0 Frontend
- * Cache-busted: v9 - Collapsible alerts
+ * Cache-busted: v8 - Fixed precip units
  */
 
-console.log('JS Loaded: v9 - Collapsible alerts -', new Date().toISOString());
+console.log('JS Loaded: v8 - Fixed precip units -', new Date().toISOString());
 
 let selectedSpecies = ['pachanoi', 'peruvianus', 'bridgesii'];
 
@@ -264,7 +264,7 @@ function renderForecast(advisories) {
             const humidity = day.humidity || 0;
             const riskClass = day.risk_level || 'optimal';
             
-            // Build exceptions HTML - collapsible with summary
+            // Build exceptions HTML
             let exceptionsHTML = '';
             const exceptions = day.species_exceptions || {};
             const exceptionKeys = Object.keys(exceptions);
@@ -272,7 +272,7 @@ function renderForecast(advisories) {
             if (exceptionKeys.length === 0) {
                 exceptionsHTML = '<div class="no-exceptions">✓ All species within normal ranges</div>';
             } else {
-                // Collect and sort all alerts
+                // Collect all alerts with severity
                 const allAlerts = [];
                 const getSeverity = (exc) => {
                     if (exc.includes('CRITICAL FROST')) return 10;
@@ -302,39 +302,15 @@ function renderForecast(advisories) {
                     }
                 });
                 
-                // Sort by severity
+                // Sort by severity (highest first)
                 allAlerts.sort((a, b) => b.severity - a.severity);
-                
-                // Get unique alert types for summary
-                const criticalCount = allAlerts.filter(a => a.severity >= 8).length;
-                const warningCount = allAlerts.filter(a => a.severity >= 5 && a.severity < 8).length;
-                const cautionCount = allAlerts.filter(a => a.severity < 5).length;
-                
-                // Build summary
-                let summaryParts = [];
-                if (criticalCount > 0) summaryParts.push(`${criticalCount} critical`);
-                if (warningCount > 0) summaryParts.push(`${warningCount} warning`);
-                if (cautionCount > 0) summaryParts.push(`${cautionCount} caution`);
-                
-                const dayId = `alerts-${index}`;
-                
-                // Build collapsible section
-                exceptionsHTML = `
-                    <div class="alerts-summary" onclick="toggleAlerts('${dayId}')">
-                        <span class="alert-badge ${criticalCount > 0 ? 'danger' : warningCount > 0 ? 'warning' : 'caution'}">
-                            ${exceptionKeys.length} species
-                        </span>
-                        <span class="alert-types">${summaryParts.join(' • ')}</span>
-                        <span class="toggle-icon">▼</span>
-                    </div>
-                    <div class="alerts-list" id="${dayId}" style="display: none;">
-                `;
                 
                 // Render sorted alerts
                 allAlerts.forEach(alert => {
                     const exc = alert.exc;
                     let excClass = 'exception-item';
                     
+                    // Heat alerts - 3 levels
                     if (exc.includes('❄️ CRITICAL FROST')) excClass += ' critical-cold';
                     else if (exc.includes('❄️ FROST WARNING')) excClass += ' frost';
                     else if (exc.includes('🧊 COLD STRESS')) excClass += ' cold';
@@ -359,8 +335,6 @@ function renderForecast(advisories) {
                         </span>
                     </div>`;
                 });
-                
-                exceptionsHTML += '</div>';
             }
             
             html += `<div class="forecast-card ${riskClass}">
@@ -408,28 +382,11 @@ function renderForecast(advisories) {
         console.log('Rendered', advisories.length, 'days,', exceptionCount, 'exception groups');
         
         if (statusDiv) {
-            statusDiv.innerHTML = `<b style="color: green;">✓ Rendered ${advisories.length} days (${exceptionCount} alerts)</b>`;
+            statusDiv.innerHTML = `<b style="color: green;">✓ Rendered ${advisories.length} days (${exceptionCount} exception groups)</b>`;
         }
     } catch (e) {
         console.error('Render error:', e);
         forecastDiv.innerHTML = `<div style="padding: 20px; color: red;">Error rendering forecast: ${e.message}</div>`;
         if (statusDiv) statusDiv.textContent = 'Render Error: ' + e.message;
-    }
-}
-
-// Toggle alerts visibility
-function toggleAlerts(dayId) {
-    const list = document.getElementById(dayId);
-    const summary = list.previousElementSibling;
-    const icon = summary.querySelector('.toggle-icon');
-    
-    if (list.style.display === 'none') {
-        list.style.display = 'block';
-        icon.textContent = '▲';
-        summary.classList.add('expanded');
-    } else {
-        list.style.display = 'none';
-        icon.textContent = '▼';
-        summary.classList.remove('expanded');
     }
 }
