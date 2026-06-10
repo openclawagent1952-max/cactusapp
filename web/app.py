@@ -26,8 +26,6 @@ SPECIES_DB = {
         "temp_optimal_c": {"day_min": 20, "day_max": 29},
         "temp_critical_c": {"frost_threshold": -4, "heat_stress": 38},
         "humidity_optimal": {"min": 30, "max": 80},
-        "uv_sensitive": False,  # NEW: Tolerates strong sun
-        "wind_tolerance": "moderate",  # NEW: wind tolerance level
         "is_core": True
     },
     "peruvianus": {
@@ -37,8 +35,6 @@ SPECIES_DB = {
         "temp_optimal_c": {"day_min": 18, "day_max": 29},
         "temp_critical_c": {"frost_threshold": -4, "heat_stress": 40},
         "humidity_optimal": {"min": 30, "max": 60},
-        "uv_sensitive": False,
-        "wind_tolerance": "moderate",
         "is_core": True
     },
     "bridgesii": {
@@ -48,8 +44,6 @@ SPECIES_DB = {
         "temp_optimal_c": {"day_min": 20, "day_max": 29},
         "temp_critical_c": {"frost_threshold": -5, "heat_stress": 35},
         "humidity_optimal": {"min": 30, "max": 70},
-        "uv_sensitive": False,
-        "wind_tolerance": "low",  # Tall, can blow over
         "is_core": True
     },
     # Additional hobby species - scientifically verified values
@@ -60,8 +54,6 @@ SPECIES_DB = {
         "temp_optimal_c": {"day_min": 20, "day_max": 28},
         "temp_critical_c": {"frost_threshold": -3, "heat_stress": 37},
         "humidity_optimal": {"min": 35, "max": 70},
-        "uv_sensitive": True,
-        "wind_tolerance": "moderate",
         "is_core": False
     },
     "terscheckii": {
@@ -71,8 +63,6 @@ SPECIES_DB = {
         "temp_optimal_c": {"day_min": 18, "day_max": 30},
         "temp_critical_c": {"frost_threshold": -9, "heat_stress": 42},
         "humidity_optimal": {"min": 20, "max": 50},
-        "uv_sensitive": False,
-        "wind_tolerance": "high",
         "is_core": False
     },
     "macrogonus": {
@@ -82,8 +72,6 @@ SPECIES_DB = {
         "temp_optimal_c": {"day_min": 19, "day_max": 28},
         "temp_critical_c": {"frost_threshold": -4, "heat_stress": 39},
         "humidity_optimal": {"min": 30, "max": 60},
-        "uv_sensitive": False,
-        "wind_tolerance": "moderate",
         "is_core": False
     },
     "validus": {
@@ -93,8 +81,6 @@ SPECIES_DB = {
         "temp_optimal_c": {"day_min": 18, "day_max": 28},
         "temp_critical_c": {"frost_threshold": -8, "heat_stress": 40},
         "humidity_optimal": {"min": 25, "max": 55},
-        "uv_sensitive": False,
-        "wind_tolerance": "moderate",
         "is_core": False
     },
     "werdermannianus": {
@@ -104,8 +90,6 @@ SPECIES_DB = {
         "temp_optimal_c": {"day_min": 17, "day_max": 27},
         "temp_critical_c": {"frost_threshold": -5, "heat_stress": 36},
         "humidity_optimal": {"min": 30, "max": 60},
-        "uv_sensitive": False,
-        "wind_tolerance": "low",
         "is_core": False
     },
     "taquimbalensis": {
@@ -115,8 +99,6 @@ SPECIES_DB = {
         "temp_optimal_c": {"day_min": 21, "day_max": 32},
         "temp_critical_c": {"frost_threshold": -2, "heat_stress": 40},
         "humidity_optimal": {"min": 35, "max": 75},
-        "uv_sensitive": True,
-        "wind_tolerance": "low",
         "is_core": False
     },
     "cuzcoensis": {
@@ -126,8 +108,6 @@ SPECIES_DB = {
         "temp_optimal_c": {"day_min": 16, "day_max": 26},
         "temp_critical_c": {"frost_threshold": -6, "heat_stress": 33},
         "humidity_optimal": {"min": 30, "max": 65},
-        "uv_sensitive": False,
-        "wind_tolerance": "moderate",
         "is_core": False
     },
     "spachianus": {
@@ -137,8 +117,6 @@ SPECIES_DB = {
         "temp_optimal_c": {"day_min": 18, "day_max": 32},
         "temp_critical_c": {"frost_threshold": -4, "heat_stress": 40},
         "humidity_optimal": {"min": 30, "max": 65},
-        "uv_sensitive": True,
-        "wind_tolerance": "low",
         "is_core": False
     }
 }
@@ -321,31 +299,26 @@ def format_date(date_str, country):
 
 
 def get_weather(lat, lon, use_fahrenheit):
-    """Get weather with UV index, wind chill, heat index, and soil temperature"""
+    """Get weather with correct units - includes humidity extremes and soil temp"""
     try:
         url = "https://api.open-meteo.com/v1/forecast"
         units = get_unit_config("United States" if use_fahrenheit else "Other")
         
-        # Open-Meteo daily parameters
+        # Open-Meteo requires daily parameters as a list, not comma-separated string
         daily_params = [
             "temperature_2m_max",
             "temperature_2m_min", 
-            "apparent_temperature_max",  # Heat index / wind chill
-            "apparent_temperature_min",  # Heat index / wind chill
             "relative_humidity_2m_mean",
             "precipitation_sum",
             "weather_code",
             "cloudcover_mean",
-            "windspeed_10m_max",
-            "uv_index_max"  # NEW: UV index
-            # Note: soil_temperature requires premium API
+            "windspeed_10m_max"
         ]
         
         current_params = [
             "temperature_2m",
             "relative_humidity_2m",
-            "windspeed_10m",
-            "uv_index"  # NEW: Current UV
+            "windspeed_10m"
         ]
         
         params = {
@@ -428,7 +401,7 @@ def get_forecast():
     if not weather:
         return jsonify({"error": "Weather unavailable"}), 503
     
-    # Parse current - now includes UV index
+    # Parse current
     current_data = weather.get("current", {})
     current = {
         "temp": current_data.get("temperature_2m", 20),
@@ -436,7 +409,6 @@ def get_forecast():
         "wind": current_data.get("windspeed_10m", 0),
         "cloudcover": current_data.get("cloudcover", 0),
         "weather_code": current_data.get("weather_code", 0),
-        "uv_index": current_data.get("uv_index", 0),  # NEW
         "location": {"city": loc_data["name"], "region": loc_data["country"]},
         "temp_symbol": units["temp_symbol"],
         "speed_symbol": units["speed_symbol"]
@@ -457,38 +429,30 @@ def get_forecast():
     for i in range(time_count):
         day_max = daily["temperature_2m_max"][i]
         day_min = daily["temperature_2m_min"][i]
-        # NEW: Apparent temperature (heat index / wind chill)
-        apparent_max = safe_get(daily, "apparent_temperature_max", day_max, i)
-        apparent_min = safe_get(daily, "apparent_temperature_min", day_min, i)
         humidity = daily["relative_humidity_2m_mean"][i]
         precip = safe_get(daily, "precipitation_sum", 0, i)
         wind = safe_get(daily, "windspeed_10m_max", 0, i)
         cloudcover = safe_get(daily, "cloudcover_mean", 0, i)
         weather_code = safe_get(daily, "weather_code", 0, i)
-        uv_index = safe_get(daily, "uv_index_max", 0, i)  # NEW
-        # Note: soil_temp requires premium API, estimate as avg of day temps
-        soil_temp = (day_max + day_min) / 2
         
         # Temperature volatility (daily swing)
         temp_swing = day_max - day_min
         
-        # For humidity, estimate range
-        humidity_min = humidity - 10
-        humidity_max = humidity + 10
+        # For fields not available in basic API, use calculated fallbacks
+        humidity_min = humidity - 10  # Estimate
+        humidity_max = humidity + 10  # Estimate
+        soil_temp = (day_max + day_min) / 2  # Estimate soil as average of air
         
         day_data = {
             "date": format_date(daily["time"][i], loc_data["country"]),
             "day_of_week": datetime.strptime(daily["time"][i], "%Y-%m-%d").strftime("%A"),
             "temp_max": day_max,
             "temp_min": day_min,
-            "apparent_temp_max": apparent_max,  # NEW: Heat index / wind chill
-            "apparent_temp_min": apparent_min,  # NEW: Heat index / wind chill
             "temp_swing": temp_swing,
             "humidity": humidity,
             "humidity_min": humidity_min,
             "humidity_max": humidity_max,
-            "soil_temp": soil_temp,  # NEW
-            "uv_index": uv_index,  # NEW
+            "soil_temp": soil_temp,
             "precipitation": precip,
             "wind": wind,
             "cloudcover": cloudcover,
@@ -553,33 +517,6 @@ def get_forecast():
                 if soil_temp < frost_thresh and day_min > frost_thresh + 2:
                     exceptions.append(f"🌡️ Soil freeze risk: {soil_temp:.0f}{units['temp_symbol']} soil vs {day_min}{units['temp_symbol']} air - roots exposed!")
                 
-                # NEW: UV index alerts (for UV-sensitive species)
-                uv_sensitive = sp_data.get("uv_sensitive", False)
-                if uv_sensitive and uv_index > 9:
-                    exceptions.append(f"☀️ EXTREME UV: {uv_index} - protect sensitive plants!")
-                elif uv_sensitive and uv_index > 7:
-                    exceptions.append(f"☀️ High UV: {uv_index} - shade recommended")
-                
-                # NEW: Apparent temperature (heat index / wind chill)
-                apparent_diff_max = apparent_max - day_max
-                apparent_diff_min = apparent_min - day_min
-                
-                # Heat index warning
-                if apparent_diff_max > (5 if use_fahrenheit else 3):
-                    exceptions.append(f"🔥 Feels like {apparent_max:.0f}{units['temp_symbol']} (heat index) - actual {day_max}{units['temp_symbol']}")
-                
-                # Wind chill warning  
-                if apparent_diff_min < -(5 if use_fahrenheit else 3):
-                    wind_desc = "strong" if wind > 15 else "moderate"
-                    exceptions.append(f"🌬️ Feels like {apparent_min:.0f}{units['temp_symbol']} (wind chill) - {wind_desc} winds {wind}{units['speed_symbol']}")
-                
-                # NEW: Wind damage risk
-                wind_tolerance = sp_data.get("wind_tolerance", "moderate")
-                if wind_tolerance == "low" and wind > 20:
-                    exceptions.append(f"💨 High wind {wind}{units['speed_symbol']} - secure tall plants!")
-                elif wind_tolerance == "low" and wind > 15:
-                    exceptions.append(f"💨 Wind {wind}{units['speed_symbol']} - watch for tipping")
-                
                 if exceptions:
                     species_exceptions[sp] = {
                         "common_name": sp_data["common_names"][0],
@@ -592,12 +529,11 @@ def get_forecast():
         risk_level = "optimal"
         for sp_data in species_exceptions.values():
             for exc in sp_data.get("exceptions", []):
-                if "CRITICAL FROST" in exc or "Soil freeze risk" in exc or "EXTREME UV" in exc:
+                if "CRITICAL FROST" in exc or "Soil freeze risk" in exc:
                     risk_level = "danger"
                     break
                 elif any(x in exc for x in ["FROST WARNING", "COLD STRESS", "Heat stress", 
-                                             "rot risk", "Extreme temp swing", "Large temp swing", "Heat warning",
-                                             "High UV", "High wind", "feels like", "wind chill"]):
+                                             "rot risk", "Extreme temp swing", "Large temp swing", "Heat warning"]):
                     risk_level = "caution"
         day_data["risk_level"] = risk_level
         
@@ -649,12 +585,6 @@ def get_forecast():
         "location": loc_data,
         "units": units
     })
-
-
-@app.route("/species/new")
-def add_species_form():
-    """Show form to add custom species"""
-    return render_template("add_species.html")
 
 
 if __name__ == "__main__":
