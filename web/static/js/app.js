@@ -1,9 +1,9 @@
 /**
- * Cactus Weather Advisor - v1.0 Frontend
- * Cache-busted: v9 - Collapsible alerts
+ * Cactus Weather Advisor - v2.0 Frontend
+ * Cache-busted: v10 - UV, apparent temp, wind alerts
  */
 
-console.log('JS Loaded: v9 - Collapsible alerts -', new Date().toISOString());
+console.log('JS Loaded: v10 - UV + Apparent Temp + Wind -', new Date().toISOString());
 
 let selectedSpecies = ['pachanoi', 'peruvianus', 'bridgesii'];
 
@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Display cache info
     const cacheInfo = document.getElementById('cache-info');
     if (cacheInfo) {
-        cacheInfo.textContent = 'JS v8 (fixed units) loaded at ' + new Date().toLocaleTimeString();
+        cacheInfo.textContent = 'JS v10 (UV + wind) loaded at ' + new Date().toLocaleTimeString();
     }
     
     // Default to Denver
@@ -60,6 +60,15 @@ function getWeatherIcon(code) {
     return icons[code] || '🌡️';
 }
 
+// UV index helpers
+function getUVLevel(uv) {
+    if (uv <= 2) return { level: 'Low', color: 'green' };
+    if (uv <= 5) return { level: 'Moderate', color: 'yellow' };
+    if (uv <= 7) return { level: 'High', color: 'orange' };
+    if (uv <= 10) return { level: 'Very High', color: 'red' };
+    return { level: 'Extreme', color: 'purple' };
+}
+
 async function loadSpecies(location) {
     try {
         const params = new URLSearchParams({ location: location });
@@ -85,6 +94,15 @@ function renderSpecies(coreSpecies, additionalSpecies) {
     html += additionalSpecies.map(s => renderSpeciesCard(s, false)).join('');
     html += '</div>';
     
+    // Add button for custom species
+    html += `
+        <div style="margin-top: 20px; text-align: center;">
+            <a href="/species/new" class="btn-secondary" style="display: inline-block; padding: 12px 24px; border-radius: 10px; text-decoration: none; color: var(--hunter-green); border: 2px solid var(--fern);">
+                + Add Custom Species
+            </a>
+        </div>
+    `;
+    
     grid.innerHTML = html;
 }
 
@@ -98,13 +116,14 @@ function renderSpeciesCard(s, isCore) {
     return `
         <div class="${cardClass} ${isSelected ? 'selected' : ''}" data-key="${key}"
              onclick="toggleSpecies('${key}')">
-            <div class="species-name">${s.name}</div>
-            <div class="species-latin">T. ${key}</div>
+            <div class="species-header">
+                <span class="species-name">${s.common_names[0]}</span>
+                ${isSelected ? '<span class="check">✓</span>' : ''}
+            </div>
             <div class="species-params">
-                <div>☀️ ${p.temp_day_range[0]}${s.temp_symbol}-${p.temp_day_range[1]}${s.temp_symbol}</div>
-                <div>❄️ ${p.frost_threshold}${s.temp_symbol}</div>
-                <div>🔥 ${p.heat_stress}${s.temp_symbol}</div>
-                <div>💧 Humidity: ${p.humidity_range[0]}%-${p.humidity_range[1]}%</div>
+                <span class="param">${p.optimal_range}</span>
+                <span class="param">Frost: ${p.frost_tolerance}</span>
+                <span class="param">Humidity: ${p.humidity_range}</span>
             </div>
         </div>
     `;
@@ -112,312 +131,255 @@ function renderSpeciesCard(s, isCore) {
 
 function toggleSpecies(key) {
     if (selectedSpecies.includes(key)) {
-        selectedSpecies = selectedSpecies.filter(k => k !== key);
+        if (selectedSpecies.length > 1) {
+            selectedSpecies = selectedSpecies.filter(k => k !== key);
+        }
     } else {
         selectedSpecies.push(key);
     }
-    
-    document.querySelectorAll('.species-card').forEach(card => {
-        card.classList.toggle('selected', 
-            selectedSpecies.includes(card.dataset.key));
-    });
-    
     fetchForecast();
+    loadSpecies(document.getElementById('location-input').value || 'Denver, Colorado');
 }
 
 function setupEventListeners() {
-    const searchBtn = document.getElementById('search-btn');
-    const locationInput = document.getElementById('location-input');
+    const input = document.getElementById('location-input');
+    const btn = document.getElementById('search-btn');
     
-    if (searchBtn) {
-        searchBtn.addEventListener('click', fetchForecast);
+    if (input) {
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                fetchForecast();
+                loadSpecies(input.value);
+            }
+        });
     }
-    if (locationInput) {
-        locationInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') fetchForecast();
+    
+    if (btn) {
+        btn.addEventListener('click', () => {
+            fetchForecast();
+            loadSpecies(input.value);
         });
     }
 }
 
 async function fetchForecast() {
-    const location = document.getElementById('location-input')?.value;
-    if (!location) return;
+    const input = document.getElementById('location-input');
+    const location = input ? input.value : 'Denver, Colorado';
+    const loading = document.getElementById('loading');
+    const forecast = document.getElementById('forecast');
     
-    const loadingDiv = document.getElementById('loading');
-    const resultsDiv = document.getElementById('results');
-    const statusDiv = document.getElementById('forecast-status');
-    
-    if (loadingDiv) loadingDiv.style.display = 'block';
-    if (resultsDiv) resultsDiv.style.display = 'none';
-    
-    // DEBUG: Log fetch start
-    console.log('FETCH START:', location, 'at', new Date().toLocaleTimeString());
+    if (loading) loading.style.display = 'block';
     
     try {
-        await loadSpecies(location);
-        
-        // Add cache-buster to fetch URL
-        const cacheBuster = Date.now();
         const params = new URLSearchParams({
             location: location,
-            species: selectedSpecies.join(','),
-            _cb: cacheBuster
+            species: selectedSpecies.join(',')
         });
         
         const resp = await fetch(`/api/forecast?${params}`);
         const data = await resp.json();
         
-        if (data.error) throw new Error(data.error);
-        
-        // DEBUG: Log what we got
-        console.log('FETCH SUCCESS:', data.daily_advisories?.length, 'days');
-        
-        // DEBUG: Check each day
-        data.daily_advisories?.forEach((day, i) => {
-            const excCount = Object.keys(day.species_exceptions || {}).length;
-            console.log(`  Day ${i+1} (${day.day_of_week}): ${excCount} species with alerts, risk=${day.risk_level}`);
-        });
+        if (loading) loading.style.display = 'none';
+        if (data.error) {
+            forecast.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+            return;
+        }
         
         renderCurrent(data.current);
-        renderForecast(data.daily_advisories);
-        
-        if (resultsDiv) resultsDiv.style.display = 'block';
+        renderForecast(data.daily_advisories, data.units);
     } catch (e) {
-        console.error('Fetch error:', e);
-        if (statusDiv) statusDiv.textContent = 'Error: ' + e.message;
-        alert('Error: ' + e.message);
-    } finally {
-        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (loading) loading.style.display = 'none';
+        forecast.innerHTML = `<div class="error">Failed to load forecast</div>`;
+        console.error(e);
     }
 }
 
 function renderCurrent(current) {
-    const currentDiv = document.getElementById('current');
-    if (!currentDiv) return;
+    const div = document.getElementById('current-weather');
+    if (!div) return;
     
-    const weatherDesc = getWeatherDesc(current.weather_code);
-    const icon = getWeatherIcon(current.weather_code);
+    const uvInfo = getUVLevel(current.uv_index || 0);
     
-    currentDiv.innerHTML = `
-        <div class="current-card">
-            <div class="stat">
-                <div class="stat-icon">📍</div>
-                <div class="stat-value">${current.location.city}, ${current.location.region}</div>
-                <div class="stat-label">Location</div>
-            </div>
-            <div class="stat">
-                <div class="stat-icon">${icon}</div>
-                <div class="stat-value">${Math.round(current.temp)}°</div>
-                <div class="stat-label">${weatherDesc}</div>
-            </div>
-            <div class="stat">
-                <div class="stat-icon">💧</div>
-                <div class="stat-value">${current.humidity}%</div>
-                <div class="stat-label">Humidity</div>
-            </div>
-            <div class="stat">
-                <div class="stat-icon">🌬️</div>
-                <div class="stat-value">${Math.round(current.wind)} ${current.speed_symbol || 'mph'}</div>
-                <div class="stat-label">Wind</div>
-            </div>
-            <div class="stat">
-                <div class="stat-icon">☁️</div>
-                <div class="stat-value">${current.cloudcover}%</div>
-                <div class="stat-label">Cloud Cover</div>
+    div.innerHTML = `
+        <div class="current-main">
+            <div class="current-location">${current.location.city}, ${current.location.region}</div>
+            <div class="current-temp">${Math.round(current.temp)}${current.temp_symbol}</div>
+            <div class="current-details">
+                <span>💧 ${current.humidity}% humidity</span>
+                <span>💨 ${Math.round(current.wind)} ${current.speed_symbol}</span>
+                <span style="color: ${uvInfo.color}">☀️ UV: ${current.uv_index} (${uvInfo.level})</span>
             </div>
         </div>
     `;
 }
 
-function renderForecast(advisories) {
-    const forecastDiv = document.getElementById('forecast');
-    const statusDiv = document.getElementById('forecast-status');
+function renderForecast(days, units) {
+    const div = document.getElementById('forecast');
+    if (!div) return;
     
-    if (!forecastDiv) {
-        console.error('forecast element not found');
-        return;
-    }
+    let html = '';
     
-    console.log('renderForecast called with', advisories?.length, 'advisories');
-    
-    if (!advisories || !Array.isArray(advisories) || advisories.length === 0) {
-        forecastDiv.innerHTML = '<div style="padding: 20px; color: red;">No forecast data available</div>';
-        if (statusDiv) statusDiv.textContent = 'Error: No data';
-        return;
-    }
-    
-    try {
-        let html = '';
-        let exceptionCount = 0;
+    days.forEach((day, index) => {
+        const highTemp = day.temp_max;
+        const lowTemp = day.temp_min;
+        const apparentHigh = day.apparent_temp_max || highTemp;
+        const apparentLow = day.apparent_temp_min || lowTemp;
+        const uvIndex = day.uv_index || 0;
+        const uvInfo = getUVLevel(uvIndex);
+        const riskClass = day.risk_level || 'optimal';
+        const weatherDesc = getWeatherDesc(day.weather_code);
+        const icon = getWeatherIcon(day.weather_code);
+        const exceptions = day.species_exceptions || {};
+        const exceptionKeys = Object.keys(exceptions);
         
-        advisories.slice(0, 7).forEach((day, index) => {
-            console.log(`Processing day ${index + 1}:`, day.day_of_week, 
-                        'exceptions:', Object.keys(day.species_exceptions || {}).length);
+        let exceptionsHTML = '';
+        if (exceptionKeys.length > 0) {
+            let allAlerts = [];
+            let exceptionCount = 0;
             
-            const weatherDesc = getWeatherDesc(day.weather_code);
-            const icon = getWeatherIcon(day.weather_code);
-            const precip = (day.precipitation || 0).toFixed(2);
-            const precipSymbol = day.precip_symbol || '"';
-            const highTemp = day.temp_max !== undefined ? day.temp_max : 0;
-            const lowTemp = day.temp_min !== undefined ? day.temp_min : 0;
-            const tempSwing = day.temp_swing !== undefined ? day.temp_swing : (highTemp - lowTemp);
-            const humidity = day.humidity || 0;
-            const riskClass = day.risk_level || 'optimal';
+            const getSeverity = (exc) => {
+                if (exc.includes('CRITICAL FROST')) return 10;
+                if (exc.includes('EXTREME UV')) return 9;
+                if (exc.includes('Soil freeze risk')) return 9;
+                if (exc.includes('High wind')) return 8;
+                if (exc.includes('Heat stress')) return 8;
+                if (exc.includes('FROST WARNING')) return 7;
+                if (exc.includes('Heat warning')) return 6;
+                if (exc.includes('COLD STRESS')) return 5;
+                if (exc.includes('High UV')) return 5;
+                if (exc.includes('wind chill')) return 5;
+                if (exc.includes('heat index')) return 5;
+                if (exc.includes('Extreme temp swing')) return 4;
+                if (exc.includes('Large temp swing')) return 3;
+                if (exc.includes('rot risk')) return 2;
+                return 1;
+            };
             
-            // Build exceptions HTML - collapsible with summary
-            let exceptionsHTML = '';
-            const exceptions = day.species_exceptions || {};
-            const exceptionKeys = Object.keys(exceptions);
-            
-            if (exceptionKeys.length === 0) {
-                exceptionsHTML = '<div class="no-exceptions">✓ All species within normal ranges</div>';
-            } else {
-                // Collect and sort all alerts
-                const allAlerts = [];
-                const getSeverity = (exc) => {
-                    if (exc.includes('CRITICAL FROST')) return 10;
-                    if (exc.includes('Soil freeze')) return 9;
-                    if (exc.includes('Heat stress')) return 8;
-                    if (exc.includes('FROST WARNING')) return 7;
-                    if (exc.includes('Heat warning')) return 6;
-                    if (exc.includes('COLD STRESS')) return 5;
-                    if (exc.includes('Extreme temp swing')) return 4;
-                    if (exc.includes('Large temp swing')) return 3;
-                    if (exc.includes('rot risk')) return 2;
-                    return 1;
-                };
-                
-                exceptionKeys.forEach(spKey => {
-                    const spData = exceptions[spKey];
-                    if (spData && spData.exceptions && Array.isArray(spData.exceptions)) {
-                        exceptionCount += spData.exceptions.length;
-                        spData.exceptions.forEach(exc => {
-                            allAlerts.push({
-                                severity: getSeverity(exc),
-                                spKey: spKey,
-                                commonName: spData.common_name || spKey,
-                                exc: exc
-                            });
+            exceptionKeys.forEach(spKey => {
+                const spData = exceptions[spKey];
+                if (spData && spData.exceptions && Array.isArray(spData.exceptions)) {
+                    exceptionCount += spData.exceptions.length;
+                    spData.exceptions.forEach(exc => {
+                        allAlerts.push({
+                            severity: getSeverity(exc),
+                            spKey: spKey,
+                            commonName: spData.common_name || spKey,
+                            exc: exc
                         });
-                    }
-                });
-                
-                // Sort by severity
-                allAlerts.sort((a, b) => b.severity - a.severity);
-                
-                // Get unique alert types for summary
-                const criticalCount = allAlerts.filter(a => a.severity >= 8).length;
-                const warningCount = allAlerts.filter(a => a.severity >= 5 && a.severity < 8).length;
-                const cautionCount = allAlerts.filter(a => a.severity < 5).length;
-                
-                // Build summary
-                let summaryParts = [];
-                if (criticalCount > 0) summaryParts.push(`${criticalCount} critical`);
-                if (warningCount > 0) summaryParts.push(`${warningCount} warning`);
-                if (cautionCount > 0) summaryParts.push(`${cautionCount} caution`);
-                
-                const dayId = `alerts-${index}`;
-                
-                // Build collapsible section
-                exceptionsHTML = `
-                    <div class="alerts-summary" onclick="toggleAlerts('${dayId}')">
-                        <span class="alert-badge ${criticalCount > 0 ? 'danger' : warningCount > 0 ? 'warning' : 'caution'}">
-                            ${exceptionKeys.length} species
-                        </span>
-                        <span class="alert-types">${summaryParts.join(' • ')}</span>
-                        <span class="toggle-icon">▼</span>
-                    </div>
-                    <div class="alerts-list" id="${dayId}" style="display: none;">
-                `;
-                
-                // Render sorted alerts
-                allAlerts.forEach(alert => {
-                    const exc = alert.exc;
-                    let excClass = 'exception-item';
-                    
-                    if (exc.includes('❄️ CRITICAL FROST')) excClass += ' critical-cold';
-                    else if (exc.includes('❄️ FROST WARNING')) excClass += ' frost';
-                    else if (exc.includes('🧊 COLD STRESS')) excClass += ' cold';
-                    else if (exc.includes('🧊 Cool temps')) excClass += ' cool';
-                    else if (exc.includes('🔥 Heat stress')) excClass += ' heat-critical';
-                    else if (exc.includes('🔥 Heat warning')) excClass += ' heat-warning';
-                    else if (exc.includes('🔥')) excClass += ' heat';
-                    else if (exc.includes('🦠')) excClass += ' rot';
-                    else if (exc.includes('💧') || exc.includes('🌙')) excClass += ' humidity';
-                    else if (exc.includes('📊')) excClass += ' volatility';
-                    else if (exc.includes('🌡️')) excClass += ' soil';
-                    
-                    const commonName = alert.commonName;
-                    const iconChar = exc.split(' ')[0];
-                    const restOfText = exc.substring(exc.indexOf(' ') + 1);
-                    
-                    exceptionsHTML += `<div class="${excClass}">
-                        <span class="exception-icon">${iconChar}</span>
-                        <span class="exception-text">
-                            <span class="exception-species">${commonName}</span>
-                            ${restOfText}
-                        </span>
-                    </div>`;
-                });
-                
-                exceptionsHTML += '</div>';
-            }
+                    });
+                }
+            });
             
-            html += `<div class="forecast-card ${riskClass}">
-                <div class="forecast-header">
-                    <div class="day-section">
-                        <div class="day">${day.day_of_week || 'Unknown'}</div>
-                        <div class="date">${day.date || ''}</div>
-                        <div class="weather-main">${icon} ${weatherDesc}</div>
-                    </div>
-                    <div class="level-badge ${riskClass}">${riskClass}</div>
+            allAlerts.sort((a, b) => b.severity - a.severity);
+            
+            const criticalCount = allAlerts.filter(a => a.severity >= 8).length;
+            const warningCount = allAlerts.filter(a => a.severity >= 5 && a.severity < 8).length;
+            const cautionCount = allAlerts.filter(a => a.severity < 5).length;
+            
+            let summaryParts = [];
+            if (criticalCount > 0) summaryParts.push(`${criticalCount} critical`);
+            if (warningCount > 0) summaryParts.push(`${warningCount} warning`);
+            if (cautionCount > 0) summaryParts.push(`${cautionCount} caution`);
+            
+            const dayId = `alerts-${index}`;
+            
+            exceptionsHTML = `
+                <div class="alerts-summary" onclick="toggleAlerts('${dayId}')">
+                    <span class="alert-badge ${criticalCount > 0 ? 'danger' : warningCount > 0 ? 'warning' : 'caution'}">
+                        ${exceptionKeys.length} species
+                    </span>
+                    <span class="alert-types">${summaryParts.join(' • ')}</span>
+                    <span class="toggle-icon">▼</span>
                 </div>
+                <div class="alerts-list" id="${dayId}" style="display: none;">
+            `;
+            
+            allAlerts.forEach(alert => {
+                const exc = alert.exc;
+                let excClass = 'exception-item';
                 
-                <div class="weather-grid">
-                    <div class="weather-item">
-                        <div class="weather-label">High</div>
-                        <div class="weather-value">${Math.round(highTemp)}°</div>
-                    </div>
-                    <div class="weather-item">
-                        <div class="weather-label">Low</div>
-                        <div class="weather-value">${Math.round(lowTemp)}°</div>
-                    </div>
-                    <div class="weather-item">
-                        <div class="weather-label">Swing</div>
-                        <div class="weather-value">${Math.round(tempSwing)}°</div>
-                    </div>
-                    <div class="weather-item">
-                        <div class="weather-label">Humidity</div>
-                        <div class="weather-value">${Math.round(humidity)}%</div>
-                    </div>
-                    <div class="weather-item">
-                        <div class="weather-label">Precip</div>
-                        <div class="weather-value">${precip}${precipSymbol}</div>
-                    </div>
-                </div>
+                if (exc.includes('❄️ CRITICAL FROST')) excClass += ' critical-cold';
+                else if (exc.includes('❄️ FROST WARNING')) excClass += ' frost';
+                else if (exc.includes('🧊 COLD STRESS')) excClass += ' cold';
+                else if (exc.includes('🧊 Cool temps')) excClass += ' cool';
+                else if (exc.includes('🔥 Heat stress')) excClass += ' heat-critical';
+                else if (exc.includes('🔥 Heat warning')) excClass += ' heat-warning';
+                else if (exc.includes('🔥')) excClass += ' heat';
+                else if (exc.includes('🦠')) excClass += ' rot';
+                else if (exc.includes('💧') || exc.includes('🌙')) excClass += ' humidity';
+                else if (exc.includes('📊')) excClass += ' volatility';
+                else if (exc.includes('🌡️')) excClass += ' soil';
+                else if (exc.includes('☀️')) excClass += ' uv';
+                else if (exc.includes('🌬️')) excClass += ' wind-chill';
+                else if (exc.includes('💨')) excClass += ' wind';
                 
-                <div class="species-advice-container">
-                    <div class="daily-note">${day.daily_note || ''}</div>
-                    <div class="exceptions-section">${exceptionsHTML}</div>
-                </div>
-            </div>`;
-        });
-        
-        forecastDiv.innerHTML = html;
-        
-        console.log('Rendered', advisories.length, 'days,', exceptionCount, 'exception groups');
-        
-        if (statusDiv) {
-            statusDiv.innerHTML = `<b style="color: green;">✓ Rendered ${advisories.length} days (${exceptionCount} alerts)</b>`;
+                const commonName = alert.commonName;
+                const iconChar = exc.split(' ')[0];
+                const restOfText = exc.substring(exc.indexOf(' ') + 1);
+                
+                exceptionsHTML += `<div class="${excClass}">
+                    <span class="exception-icon">${iconChar}</span>
+                    <span class="exception-text">
+                        <span class="exception-species">${commonName}</span>
+                        ${restOfText}
+                    </span>
+                </div>`;
+            });
+            
+            exceptionsHTML += '</div>';
         }
-    } catch (e) {
-        console.error('Render error:', e);
-        forecastDiv.innerHTML = `<div style="padding: 20px; color: red;">Error rendering forecast: ${e.message}</div>`;
-        if (statusDiv) statusDiv.textContent = 'Render Error: ' + e.message;
-    }
+        
+        // Show apparent temp if different from actual
+        const showApparent = Math.abs(apparentHigh - highTemp) > 3 || Math.abs(apparentLow - lowTemp) > 3;
+        const apparentHighDisplay = showApparent ? ` (feels ${Math.round(apparentHigh)}°)` : '';
+        const apparentLowDisplay = showApparent ? ` (feels ${Math.round(apparentLow)}°)` : '';
+        
+        html += `<div class="forecast-card ${riskClass}">
+            <div class="forecast-header">
+                <div class="day-section">
+                    <div class="day">${day.day_of_week || 'Unknown'}</div>
+                    <div class="date">${day.date || ''}</div>
+                    <div class="weather-main">${icon} ${weatherDesc}</div>
+                </div>
+                <div class="level-badge ${riskClass}">${riskClass}</div>
+            </div>
+            
+            <div class="weather-grid">
+                <div class="weather-item">
+                    <div class="weather-label">High</div>
+                    <div class="weather-value">${Math.round(highTemp)}°${apparentHighDisplay}</div>
+                </div>
+                <div class="weather-item">
+                    <div class="weather-label">Low</div>
+                    <div class="weather-value">${Math.round(lowTemp)}°${apparentLowDisplay}</div>
+                </div>
+                <div class="weather-item">
+                    <div class="weather-label">UV</div>
+                    <div class="weather-value" style="color: ${uvInfo.color}">${uvIndex}</div>
+                </div>
+                <div class="weather-item">
+                    <div class="weather-label">Wind</div>
+                    <div class="weather-value">${Math.round(day.wind || 0)} ${units.speed_symbol}</div>
+                </div>
+                <div class="weather-item">
+                    <div class="weather-label">Rain</div>
+                    <div class="weather-value">${(day.precipitation || 0).toFixed(1)}${units.precip_symbol}</div>
+                </div>
+                <div class="weather-item">
+                    <div class="weather-label">Humidity</div>
+                    <div class="weather-value">${day.humidity || 0}%</div>
+                </div>
+            </div>
+            
+            ${exceptionsHTML}
+            
+            <div class="daily-note">${day.daily_note || ''}</div>
+        </div>`;
+    });
+    
+    div.innerHTML = html;
 }
 
-// Toggle alerts visibility
 function toggleAlerts(dayId) {
     const list = document.getElementById(dayId);
     const summary = list.previousElementSibling;
@@ -426,10 +388,12 @@ function toggleAlerts(dayId) {
     if (list.style.display === 'none') {
         list.style.display = 'block';
         icon.textContent = '▲';
-        summary.classList.add('expanded');
     } else {
         list.style.display = 'none';
         icon.textContent = '▼';
-        summary.classList.remove('expanded');
     }
 }
+
+// Expose to window
+window.toggleSpecies = toggleSpecies;
+window.toggleAlerts = toggleAlerts;
