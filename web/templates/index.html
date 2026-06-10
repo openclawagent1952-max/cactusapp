@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cactus Weather Advisor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>🌵 Cactus Weather Advisor</h1>
+            <span class="version">version 1.0</span>
+        </header>
+
+        <section class="location-section">
+            <input type="text" id="location-input" placeholder="City, State/Country" value="Tampa">
+            <button id="search-btn">Get Forecast</button>
+        </section>
+
+        <section class="species-section">
+            <h2>Select Species</h2>
+            <div class="species-grid" id="species-grid"></div>
+        </section>
+
+        <section class="loading" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Consulting the weather spirits...</p>
+        </section>
+
+        <section class="results" id="results" style="display: none;">
+            <div class="current-conditions" id="current"></div>
+            <div class="forecast-grid" id="forecast"></div>
+        </section>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
