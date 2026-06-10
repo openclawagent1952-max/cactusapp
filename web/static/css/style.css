@@ -622,6 +622,77 @@ button:hover {
 .no-exceptions {
   color: var(--palm-leaf);
   font-style: italic;
+  padding: 10px;
+  text-align: center;
+}
+
+/* Collapsible Alerts Summary */
+.alerts-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  border: 1px solid var(--border);
+}
+
+.alerts-summary:hover {
+  background: var(--lime-cream);
+}
+
+.alerts-summary.expanded {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: none;
+}
+
+.alert-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.alert-badge.danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.alert-badge.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.alert-badge.caution {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.alert-types {
+  flex: 1;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.toggle-icon {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  transition: transform 0.2s;
+}
+
+.alerts-list {
+  border: 1px solid var(--border);
+  border-top: none;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  padding: 8px;
+  background: var(--surface);
+}
   padding: 8px 0;
 }
 
