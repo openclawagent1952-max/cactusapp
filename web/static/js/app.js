@@ -7,7 +7,7 @@ let selectedSpecies = ['pachanoi', 'peruvianus', 'bridgesii'];
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    loadSpecies();
+    loadSpecies('Tampa');
     setupEventListeners();
     fetchForecast();
 });
@@ -46,9 +46,10 @@ function getWeatherIcon(code) {
     return icons[code] || '🌡️';
 }
 
-async function loadSpecies() {
+async function loadSpecies(location = 'Tampa') {
     try {
-        const resp = await fetch('/api/species');
+        const params = new URLSearchParams({ location: location });
+        const resp = await fetch(`/api/species?${params}`);
         const data = await resp.json();
         renderSpecies(data.species);
     } catch (e) {
@@ -69,9 +70,9 @@ function renderSpecies(species) {
                 <div class="species-name">${s.name}</div>
                 <div class="species-latin">T. ${key}</div>
                 <div class="species-params">
-                    <div>☀️ Optimal: ${p.temp_day_range[0]}°-${p.temp_day_range[1]}°</div>
-                    <div>❄️ Frost limit: ${p.frost_threshold}°</div>
-                    <div>🔥 Heat limit: ${p.heat_stress}°</div>
+                    <div>☀️ Optimal: ${p.temp_day_range[0]}${s.temp_symbol}-${p.temp_day_range[1]}${s.temp_symbol}</div>
+                    <div>❄️ Frost limit: ${p.frost_threshold}${s.temp_symbol}</div>
+                    <div>🔥 Heat limit: ${p.heat_stress}${s.temp_symbol}</div>
                     <div>💧 Humidity: ${p.humidity_range[0]}%-${p.humidity_range[1]}%</div>
                 </div>
             </div>
@@ -109,6 +110,9 @@ async function fetchForecast() {
     document.getElementById('results').style.display = 'none';
     
     try {
+        // Reload species with correct units for this location
+        await loadSpecies(location);
+        
         const params = new URLSearchParams({
             location: location,
             species: selectedSpecies.join(',')

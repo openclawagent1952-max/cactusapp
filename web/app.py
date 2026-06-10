@@ -296,9 +296,12 @@ def index():
 
 @app.route("/api/species")
 def get_species():
-    """Return species with units based on requested location"""
-    # Default to Fahrenheit unless specified
-    use_fahrenheit = request.args.get("units", "auto") != "metric"
+    """Return species with units based on location"""
+    location = request.args.get("location", "Tampa")  # Get location from request
+    
+    # Geocode to determine units
+    loc_data = geocode_location(location)
+    use_fahrenheit = loc_data["use_fahrenheit"] if loc_data else True
     
     species_list = []
     for key, data in SPECIES_DB.items():
@@ -315,7 +318,7 @@ def get_species():
             "temp_symbol": "°F" if use_fahrenheit else "°C"
         })
     
-    return jsonify({"species": species_list})
+    return jsonify({"species": species_list, "use_fahrenheit": use_fahrenheit})
 
 
 @app.route("/api/forecast")
