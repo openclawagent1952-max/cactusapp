@@ -1,6 +1,5 @@
 /**
  * Cactus Weather Advisor - v1.0 Frontend
- * Fahrenheit only
  */
 
 let selectedSpecies = ['pachanoi', 'peruvianus', 'bridgesii'];
@@ -46,7 +45,7 @@ function getWeatherIcon(code) {
     return icons[code] || '🌡️';
 }
 
-async function loadSpecies(location = 'Tampa') {
+async function loadSpecies(location) {
     try {
         const params = new URLSearchParams({ location: location });
         const resp = await fetch(`/api/species?${params}`);
@@ -59,14 +58,13 @@ async function loadSpecies(location = 'Tampa') {
 
 function renderSpecies(coreSpecies, additionalSpecies) {
     const grid = document.getElementById('species-grid');
+    if (!grid) return;
     
-    // Render core species (large cards, selected by default)
     let html = '<h3 style="margin: 16px 0 8px 0; color: var(--hunter-green);">Core Species</h3>';
     html += '<div class="core-species-grid">';
     html += coreSpecies.map(s => renderSpeciesCard(s, true)).join('');
     html += '</div>';
     
-    // Render additional species (small cards, not selected)
     html += '<h3 style="margin: 24px 0 8px 0; color: var(--hunter-green);">Additional Species</h3>';
     html += '<div class="additional-species-grid">';
     html += additionalSpecies.map(s => renderSpeciesCard(s, false)).join('');
@@ -113,52 +111,66 @@ function toggleSpecies(key) {
 }
 
 function setupEventListeners() {
-    document.getElementById('search-btn').addEventListener('click', fetchForecast);
-    document.getElementById('location-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') fetchForecast();
-    });
+    const searchBtn = document.getElementById('search-btn');
+    const locationInput = document.getElementById('location-input');
+    
+    if (searchBtn) {
+        searchBtn.addEventListener('click', fetchForecast);
+    }
+    if (locationInput) {
+        locationInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') fetchForecast();
+        });
+    }
 }
 
 async function fetchForecast() {
-    const location = document.getElementById('location-input').value;
+    const location = document.getElementById('location-input')?.value;
     if (!location) return;
     
-    document.getElementById('loading').style.display = 'block';
-    document.getElementById('results').style.display = 'none';
+    const loadingDiv = document.getElementById('loading');
+    const resultsDiv = document.getElementById('results');
+    const statusDiv = document.getElementById('forecast-status');
+    
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    if (resultsDiv) resultsDiv.style.display = 'none';
     
     try {
-        // Reload species with correct units for this location
         await loadSpecies(location);
         
         const params = new URLSearchParams({
             location: location,
             species: selectedSpecies.join(',')
         });
+        
         const resp = await fetch(`/api/forecast?${params}`);
         const data = await resp.json();
         
         if (data.error) throw new Error(data.error);
         
-        console.log('Forecast data:', data);
-        console.log('Daily advisories:', data.daily_advisories);
+        console.log('API Response - daily_advisories count:', data.daily_advisories?.length);
         
         renderCurrent(data.current);
         renderForecast(data.daily_advisories);
         
-        document.getElementById('results').style.display = 'block';
+        if (resultsDiv) resultsDiv.style.display = 'block';
     } catch (e) {
         console.error('Fetch error:', e);
+        if (statusDiv) statusDiv.textContent = 'Error: ' + e.message;
         alert('Error: ' + e.message);
     } finally {
-        document.getElementById('loading').style.display = 'none';
+        if (loadingDiv) loadingDiv.style.display = 'none';
     }
 }
 
 function renderCurrent(current) {
+    const currentDiv = document.getElementById('current');
+    if (!currentDiv) return;
+    
     const weatherDesc = getWeatherDesc(current.weather_code);
     const icon = getWeatherIcon(current.weather_code);
     
-    document.getElementById('current').innerHTML = `
+    currentDiv.innerHTML = `
         <div class="current-card">
             <div class="stat">
                 <div class="stat-icon">📍</div>
@@ -190,84 +202,127 @@ function renderCurrent(current) {
 }
 
 function renderForecast(advisories) {
-    document.getElementById('forecast').innerHTML = advisories.slice(0, 7).map((a) => {
-        const weatherDesc = getWeatherDesc(a.weather_code);
-        const icon = getWeatherIcon(a.weather_code);
-        const precip = (a.precipitation || 0).toFixed(2);
-
-        // Handle temp field names
-        const highTemp = a.temp_max !== undefined ? a.temp_max : (a.temp_max_f || 0);
-        const lowTemp = a.temp_min !== undefined ? a.temp_min : (a.temp_min_f || 0);
-
-        // Build exceptions list
-        let exceptionsHTML = '';
-        const exceptions = a.species_exceptions || {};
-
-        if (Object.keys(exceptions).length === 0) {
-            exceptionsHTML = '<div class="no-exceptions">✓ All species within normal ranges</div>';
-        } else {
-            exceptionsHTML = Object.entries(exceptions).map(([spKey, data]) => {
-                const exceptionItems = data.exceptions.map(exc => {
-                    let excClass = 'exception-item';
-                    if (exc.includes('❄️')) excClass += ' frost';
-                    else if (exc.includes('🧊')) excClass += ' cold';
-                    else if (exc.includes('🔥')) excClass += ' heat';
-                    else if (exc.includes('🦠')) excClass += ' rot';
-                    else if (exc.includes('💧') || exc.includes('🌙')) excClass += ' humidity';
-                    else if (exc.includes('📊')) excClass += ' volatility';
-                    else if (exc.includes('🌡️')) excClass += ' soil';
-
-                    return '<div class="' + excClass + '">' +
-                        '<span class="exception-icon">' + exc.split(' ')[0] + '</span>' +
-                        '<span class="exception-text">' +
-                            '<span class="exception-species">' + data.common_name + '</span>' +
-                            exc.substring(exc.indexOf(' ') + 1) +
-                        '</span>' +
-                    '</div>';
-                }).join('');
-                return exceptionItems;
-            }).join('');
+    const forecastDiv = document.getElementById('forecast');
+    const statusDiv = document.getElementById('forecast-status');
+    
+    if (!forecastDiv) {
+        console.error('forecast element not found');
+        return;
+    }
+    
+    console.log('renderForecast called with', advisories?.length, 'advisories');
+    
+    if (!advisories || !Array.isArray(advisories) || advisories.length === 0) {
+        forecastDiv.innerHTML = '<div style="padding: 20px; color: red;">No forecast data available</div>';
+        if (statusDiv) statusDiv.textContent = 'Error: No data';
+        return;
+    }
+    
+    try {
+        let html = '';
+        let exceptionCount = 0;
+        
+        advisories.slice(0, 7).forEach((day, index) => {
+            console.log(`Processing day ${index + 1}:`, day.day_of_week, 
+                        'exceptions:', Object.keys(day.species_exceptions || {}).length);
+            
+            const weatherDesc = getWeatherDesc(day.weather_code);
+            const icon = getWeatherIcon(day.weather_code);
+            const precip = (day.precipitation || 0).toFixed(2);
+            const highTemp = day.temp_max !== undefined ? day.temp_max : 0;
+            const lowTemp = day.temp_min !== undefined ? day.temp_min : 0;
+            const tempSwing = day.temp_swing !== undefined ? day.temp_swing : (highTemp - lowTemp);
+            const humidity = day.humidity || 0;
+            const riskClass = day.risk_level || 'optimal';
+            
+            // Build exceptions HTML
+            let exceptionsHTML = '';
+            const exceptions = day.species_exceptions || {};
+            const exceptionKeys = Object.keys(exceptions);
+            
+            if (exceptionKeys.length === 0) {
+                exceptionsHTML = '<div class="no-exceptions">✓ All species within normal ranges</div>';
+            } else {
+                exceptionKeys.forEach(spKey => {
+                    const spData = exceptions[spKey];
+                    if (spData && spData.exceptions && Array.isArray(spData.exceptions)) {
+                        exceptionCount++;
+                        spData.exceptions.forEach(exc => {
+                            let excClass = 'exception-item';
+                            if (exc.includes('❄️')) excClass += ' frost';
+                            else if (exc.includes('🧊')) excClass += ' cold';
+                            else if (exc.includes('🔥')) excClass += ' heat';
+                            else if (exc.includes('🦠')) excClass += ' rot';
+                            else if (exc.includes('💧') || exc.includes('🌙')) excClass += ' humidity';
+                            else if (exc.includes('📊')) excClass += ' volatility';
+                            else if (exc.includes('🌡️')) excClass += ' soil';
+                            
+                            const commonName = spData.common_name || spKey;
+                            const iconChar = exc.split(' ')[0];
+                            const restOfText = exc.substring(exc.indexOf(' ') + 1);
+                            
+                            exceptionsHTML += `<div class="${excClass}">
+                                <span class="exception-icon">${iconChar}</span>
+                                <span class="exception-text">
+                                    <span class="exception-species">${commonName}</span>
+                                    ${restOfText}
+                                </span>
+                            </div>`;
+                        });
+                    }
+                });
+            }
+            
+            html += `<div class="forecast-card ${riskClass}">
+                <div class="forecast-header">
+                    <div class="day-section">
+                        <div class="day">${day.day_of_week || 'Unknown'}</div>
+                        <div class="date">${day.date || ''}</div>
+                        <div class="weather-main">${icon} ${weatherDesc}</div>
+                    </div>
+                    <div class="level-badge ${riskClass}">${riskClass}</div>
+                </div>
+                
+                <div class="weather-grid">
+                    <div class="weather-item">
+                        <div class="weather-label">High</div>
+                        <div class="weather-value">${Math.round(highTemp)}°</div>
+                    </div>
+                    <div class="weather-item">
+                        <div class="weather-label">Low</div>
+                        <div class="weather-value">${Math.round(lowTemp)}°</div>
+                    </div>
+                    <div class="weather-item">
+                        <div class="weather-label">Swing</div>
+                        <div class="weather-value">${Math.round(tempSwing)}°</div>
+                    </div>
+                    <div class="weather-item">
+                        <div class="weather-label">Humidity</div>
+                        <div class="weather-value">${Math.round(humidity)}%</div>
+                    </div>
+                    <div class="weather-item">
+                        <div class="weather-label">Precip</div>
+                        <div class="weather-value">${precip}"</div>
+                    </div>
+                </div>
+                
+                <div class="species-advice-container">
+                    <div class="daily-note">${day.daily_note || ''}</div>
+                    <div class="exceptions-section">${exceptionsHTML}</div>
+                </div>
+            </div>`;
+        });
+        
+        forecastDiv.innerHTML = html;
+        
+        console.log('Rendered', advisories.length, 'days,', exceptionCount, 'exception groups');
+        
+        if (statusDiv) {
+            statusDiv.innerHTML = `<b style="color: green;">✓ Rendered ${advisories.length} days (${exceptionCount} exception groups)</b>`;
         }
-
-        const riskClass = a.risk_level || 'optimal';
-
-        return '<div class="forecast-card ' + riskClass + '">' +
-            '<div class="forecast-header">' +
-                '<div class="day-section">' +
-                    '<div class="day">' + a.day_of_week + '</div>' +
-                    '<div class="date">' + a.date + '</div>' +
-                    '<div class="weather-main">' + icon + ' ' + weatherDesc + '</div>' +
-                '</div>' +
-                '<div class="level-badge ' + riskClass + '">' + riskClass + '</div>' +
-            '</div>' +
-
-            '<div class="weather-grid">' +
-                '<div class="weather-item">' +
-                    '<div class="weather-label">High</div>' +
-                    '<div class="weather-value">' + Math.round(highTemp) + '°</div>' +
-                '</div>' +
-                '<div class="weather-item">' +
-                    '<div class="weather-label">Low</div>' +
-                    '<div class="weather-value">' + Math.round(lowTemp) + '°</div>' +
-                '</div>' +
-                '<div class="weather-item">' +
-                    '<div class="weather-label">Swing</div>' +
-                    '<div class="weather-value">' + Math.round(a.temp_swing || (highTemp - lowTemp)) + '°</div>' +
-                '</div>' +
-                '<div class="weather-item">' +
-                    '<div class="weather-label">Humidity</div>' +
-                    '<div class="weather-value">' + Math.round(a.humidity) + '%</div>' +
-                '</div>' +
-                '<div class="weather-item">' +
-                    '<div class="weather-label">Precip</div>' +
-                    '<div class="weather-value">' + precip + '"</div>' +
-                '</div>' +
-            '</div>' +
-
-            '<div class="species-advice-container">' +
-                '<div class="daily-note">' + a.daily_note + '</div>' +
-                '<div class="exceptions-section">' + exceptionsHTML + '</div>' +
-            '</div>' +
-        '</div>';
-    }).join('');
+    } catch (e) {
+        console.error('Render error:', e);
+        forecastDiv.innerHTML = `<div style="padding: 20px; color: red;">Error rendering forecast: ${e.message}</div>`;
+        if (statusDiv) statusDiv.textContent = 'Render Error: ' + e.message;
+    }
 }

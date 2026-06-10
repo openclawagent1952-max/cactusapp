@@ -18,7 +18,7 @@ body {
     font-family: 'Inter', system-ui, sans-serif;
     background: var(--bg);
     color: var(--text);
-    padding: 20px;
+    padding: 12px;
     line-height: 1.5;
 }
 
@@ -31,41 +31,51 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px;
-    padding-bottom: 16px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
     border-bottom: 2px solid var(--fern);
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 h1 { 
-    font-size: 1.75rem; 
+    font-size: 1.4rem; 
     color: var(--evergreen);
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
 }
 
 .version { 
     color: var(--palm-leaf); 
-    font-size: 0.875rem; 
+    font-size: 0.75rem; 
     font-weight: 600;
 }
 
 /* Location */
 .location-section {
     display: flex;
-    gap: 12px;
-    margin-bottom: 24px;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+@media (min-width: 480px) {
+    .location-section {
+        flex-direction: row;
+    }
 }
 
 input {
     flex: 1;
-    padding: 14px 18px;
+    padding: 12px 14px;
     border: 2px solid var(--border);
     border-radius: 10px;
     font-size: 1rem;
     transition: border-color 0.2s;
     background: var(--surface);
     color: var(--text);
+    width: 100%;
 }
 
 input:focus {
@@ -75,7 +85,7 @@ input:focus {
 }
 
 button {
-    padding: 14px 24px;
+    padding: 12px 20px;
     background: var(--fern);
     color: var(--lime-cream);
     border: none;
@@ -84,6 +94,13 @@ button {
     font-weight: 600;
     font-size: 1rem;
     transition: all 0.2s;
+    width: 100%;
+}
+
+@media (min-width: 480px) {
+    button {
+        width: auto;
+    }
 }
 
 button:hover { 
@@ -93,39 +110,51 @@ button:hover {
 
 /* Species */
 .species-section h2 {
-    margin-bottom: 16px;
-    font-size: 1.25rem;
+    margin-bottom: 12px;
+    font-size: 1.1rem;
     color: var(--hunter-green);
 }
 
 .species-grid {
-    margin-bottom: 32px;
+    margin-bottom: 24px;
 }
 
 .core-species-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 16px;
+    grid-template-columns: 1fr;
+    gap: 12px;
     margin-bottom: 16px;
 }
 
+@media (min-width: 640px) {
+    .core-species-grid {
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    }
+}
+
 .additional-species-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+@media (min-width: 480px) {
+    .additional-species-grid {
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    }
 }
 
 .additional-species-grid .species-card.additional {
-    flex: 1 1 220px;
-    max-width: 220px;
-    padding: 16px;
+    flex: none;
+    max-width: none;
+    padding: 12px;
 }
 
 .species-card {
     background: var(--surface);
     border: 2px solid var(--border);
     border-radius: 12px;
-    padding: 24px;
+    padding: 16px;
     cursor: pointer;
     transition: all 0.2s;
 }
@@ -143,108 +172,149 @@ button:hover {
 
 .species-name { 
     font-weight: 700; 
-    font-size: 1.25rem; 
-    margin-bottom: 6px;
+    font-size: 1.1rem; 
+    margin-bottom: 4px;
     color: var(--evergreen);
 }
 
 .species-latin { 
     font-style: italic; 
     color: var(--hunter-green); 
-    margin-bottom: 16px;
-    font-size: 0.95rem;
+    margin-bottom: 12px;
+    font-size: 0.85rem;
 }
 
 .species-params { 
-    font-size: 0.95rem; 
-    line-height: 1.7;
+    font-size: 0.85rem; 
+    line-height: 1.6;
     color: var(--text);
 }
 
 .species-params div { 
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 /* Loading */
 .loading {
     text-align: center;
-    padding: 60px 40px;
+    padding: 40px 20px;
     background: var(--surface);
     border-radius: 16px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
 .spinner {
-    width: 50px; height: 50px;
+    width: 40px; height: 40px;
     border: 4px solid #d4dcb8;
     border-top-color: var(--fern);
     border-radius: 50%;
     animation: spin 1s linear infinite;
-    margin: 0 auto 20px;
+    margin: 0 auto 16px;
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Current Conditions */
 .current-conditions {
-    margin-bottom: 32px;
+    margin-bottom: 24px;
 }
 
 .current-card {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 28px;
-    display: flex;
-    gap: 40px;
-    flex-wrap: wrap;
+    padding: 20px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+@media (min-width: 640px) {
+    .current-card {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 24px;
+        padding: 28px;
+    }
 }
 
 .stat { 
     text-align: center; 
-    flex: 1;
-    min-width: 100px;
+}
+
+@media (min-width: 640px) {
+    .stat {
+        flex: 1;
+        min-width: 80px;
+    }
 }
 
 .stat-icon { 
-    font-size: 2.5rem; 
-    margin-bottom: 12px;
+    font-size: 2rem; 
+    margin-bottom: 8px;
     line-height: 1;
 }
 
+@media (min-width: 640px) {
+    .stat-icon {
+        font-size: 2.5rem;
+        margin-bottom: 12px;
+    }
+}
+
 .stat-value {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: var(--evergreen);
 }
 
+@media (min-width: 640px) {
+    .stat-value {
+        font-size: 1.5rem;
+    }
+}
+
 .stat-label { 
-    font-size: 0.75rem; 
+    font-size: 0.7rem; 
     color: var(--text-secondary); 
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-top: 6px;
+    margin-top: 4px;
 }
 
 /* Forecast */
 .forecast-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-    gap: 20px;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+@media (min-width: 640px) {
+    .forecast-grid {
+        grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+        gap: 20px;
+    }
 }
 
 .forecast-card {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 20px;
+    border-radius: 12px;
+    padding: 16px;
     border-top: 4px solid var(--palm-leaf);
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     min-width: 0;
+}
+
+@media (min-width: 640px) {
+    .forecast-card {
+        padding: 20px;
+        border-radius: 16px;
+    }
 }
 
 .forecast-card.optimal { border-top-color: var(--fern); }
@@ -255,8 +325,8 @@ button:hover {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 20px;
-    padding-bottom: 16px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
     border-bottom: 1px solid var(--border);
 }
 
@@ -264,59 +334,108 @@ button:hover {
 
 .day { 
     font-weight: 700; 
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     color: var(--evergreen);
 }
 
+@media (min-width: 640px) {
+    .day {
+        font-size: 1.25rem;
+    }
+}
+
 .date { 
-    font-size: 0.875rem; 
+    font-size: 0.8rem; 
     color: var(--text-secondary);
     margin-top: 4px;
 }
 
 .weather-main {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     margin-top: 8px;
     color: var(--hunter-green);
 }
 
 .level-badge {
-    font-size: 0.625rem;
+    font-size: 0.6rem;
     text-transform: uppercase;
-    padding: 6px 12px;
+    padding: 4px 10px;
     border-radius: 20px;
     font-weight: 700;
+}
+
+@media (min-width: 640px) {
+    .level-badge {
+        font-size: 0.625rem;
+        padding: 6px 12px;
+    }
 }
 
 .level-badge.optimal { background: var(--lime-cream); color: var(--fern); }
 .level-badge.caution { background: #fef9c3; color: #854d0e; }
 .level-badge.danger { background: #fee2e2; color: #991b1b; }
 
-/* Weather Grid - 6 items */
+/* Weather Grid - 5 items (High, Low, Swing, Humidity, Precip) */
 .weather-grid {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 16px;
 }
 
-@media (max-width: 1200px) {
+@media (min-width: 400px) {
     .weather-grid {
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(5, 1fr);
+        gap: 10px;
     }
 }
 
-@media (max-width: 768px) {
+@media (min-width: 640px) {
     .weather-grid {
-        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+        margin-bottom: 20px;
     }
 }
 
 .weather-item {
     text-align: center;
-    padding: 12px 8px;
+    padding: 10px 6px;
     background: var(--bg);
-    border-radius: 10px;
+    border-radius: 8px;
+}
+
+@media (min-width: 640px) {
+    .weather-item {
+        padding: 12px 8px;
+        border-radius: 10px;
+    }
+}
+
+.weather-label {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+@media (min-width: 640px) {
+    .weather-label {
+        font-size: 0.7rem;
+        margin-bottom: 6px;
+    }
+}
+
+.weather-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--evergreen);
+}
+
+@media (min-width: 640px) {
+    .weather-value {
+        font-size: 1.25rem;
+    }
 }
 
 .weather-label {
@@ -327,30 +446,41 @@ button:hover {
     margin-bottom: 6px;
 }
 
-.weather-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--evergreen);
-}
-
 /* Species Advice Container */
 .species-advice-container {
-  margin-top: 20px;
-  padding: 20px;
+  margin-top: 16px;
+  padding: 16px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 10px;
   min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .species-advice-container {
+    margin-top: 20px;
+    padding: 20px;
+    border-radius: 12px;
+  }
 }
 
 .daily-note {
-  font-size: 1rem;
-  line-height: 1.6;
+  font-size: 0.95rem;
+  line-height: 1.5;
   color: var(--hunter-green);
-  margin-bottom: 16px;
-  padding-bottom: 16px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
   border-bottom: 2px solid var(--border);
   min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .daily-note {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+  }
 }
 
 .daily-note strong {
@@ -361,17 +491,31 @@ button:hover {
 .exceptions-section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+}
+
+@media (min-width: 640px) {
+  .exceptions-section {
+    gap: 10px;
+  }
 }
 
 .exception-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px 16px;
+  gap: 8px;
+  padding: 10px 14px;
   border-radius: 8px;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .exception-item {
+    gap: 10px;
+    padding: 12px 16px;
+    font-size: 0.95rem;
+  }
 }
 
 /* Using natural cactus palette */

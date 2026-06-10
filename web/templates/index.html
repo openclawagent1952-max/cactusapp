@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trichocereus Weather Advisor</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=4">
 </head>
 <body>
     <div class="app-container">
@@ -30,10 +30,11 @@
 
         <section class="results" id="results" style="display: none;">
             <div class="current-conditions" id="current"></div>
+            <div id="forecast-status" style="padding: 10px; color: #666;"></div>
             <div class="forecast-grid" id="forecast"></div>
         </section>
     </div>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=4"></script>
 </body>
 </html>
