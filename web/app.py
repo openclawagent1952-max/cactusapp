@@ -100,13 +100,115 @@ def geocode_location(location_str):
     """Geocode with country detection for unit selection"""
     try:
         original = location_str.strip()
+        
+        # Common alternate spellings/misspellings
+        ALT_SPELLINGS = {
+            'bruxelles': 'brussels',
+            'bruxelles, belgium': 'brussels, belgium',
+            'copenhagen': 'københavn',
+            'rome': 'roma',
+            'florence': 'firenze',
+            'naples': 'napoli',
+            'turin': 'torino',
+            'milan': 'milano',
+            'venice': 'venezia',
+            'genoa': 'genova',
+            'padua': 'padova',
+            'vienna': 'wien',
+            'prague': 'praha',
+            'krakow': 'kraków',
+            'bratislava': 'pressburg',
+            'ljubljana': 'laibach',
+            'trieste': 'trst',
+            'ghent': 'gent',
+            'antwerp': 'antwerpen',
+            'bruges': 'brugge',
+            'cologne': 'köln',
+            'munich': 'münchen',
+            'nuremberg': 'nürnberg',
+            'vienna': 'wien',
+            'basle': 'basel',
+            'zurich': 'zürich',
+            'geneva': 'genève',
+        }
+        
+        # Check for alternate spellings (case insensitive)
+        original_lower = original.lower()
+        if original_lower in ALT_SPELLINGS:
+            original = ALT_SPELLINGS[original_lower]
+            original_lower = original.lower()
+        
         normalized = original
         
         # Normalize US state formats
         us_state_codes = {'AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'}
         
-        # "Denver CO" -> "Denver, CO"
-        match = re.match(r'^(.*?)\s+([A-Z]{2})$', normalized.upper())
+        # Check for "City Name ST" pattern (case insensitive)
+        words = original.split()
+        if len(words) >= 2:
+            last_word = words[-1].upper()
+            if len(last_word) == 2 and last_word in us_state_codes:
+                # Extract city name (everything before state code)
+                city_name = ' '.join(words[:-1])
+                normalized = f"{city_name}, {last_word}"
+        
+        # Try multiple search strategies with different cases
+        search_terms = [
+            original,  # Original case
+            original.title(),  # Title Case
+            original_lower,  # Lowercase
+            normalized,
+        ]
+        
+        # Add city-only version if comma present
+        if ',' in original:
+            city_only = original.split(',')[0].strip()
+            search_terms.extend([city_only, city_only.title(), city_only.lower()])
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_terms = []
+        for term in search_terms:
+            term_key = term.lower().replace(' ', '')
+            if term_key not in seen and len(term) > 1:
+                seen.add(term_key)
+                unique_terms.append(term)
+        
+        for search_term in unique_terms:
+            clean_loc = search_term.replace(' ', '+')
+            url = "https://geocoding-api.open-meteo.com/v1/search"
+            resp = requests.get(url, params={"name": clean_loc, "count": 10, "language": "en"}, timeout=10)
+            data = resp.json()
+            
+            if "results" in data and data["results"]:
+                for result in data["results"]:
+                    result_type = result.get("feature_code", "")
+                    country = result.get("country", "")
+                    
+                    # Skip countries/regions, only cities
+                    if result_type in ["PCLI", "PCLD", "PCLF", "TERR", "CONT"]:
+                        continue
+                    if not result_type.startswith("PPL") and result_type not in ["ADM2", "ADM3", "ADM4"]:
+                        continue
+                    
+                    # Format display name
+                    admin1 = result.get("admin1", "")
+                    if country == "United States" and admin1:
+                        display_name = f"{result.get('name', search_term)}, {admin1}"
+                    else:
+                        display_name = f"{result.get('name', search_term)}, {country}"
+                    
+                    return {
+                        "lat": result["latitude"],
+                        "lon": result["longitude"],
+                        "name": display_name,
+                        "country": country,
+                        "use_fahrenheit": country in FAHRENHEIT_COUNTRIES
+                    }
+        return None
+    except Exception as e:
+        print(f"Geocode error: {e}")
+        return None
         if match and match.group(2) in us_state_codes:
             normalized = f"{match.group(1).strip().title()}, {match.group(2)}"
         
@@ -152,6 +254,15 @@ def geocode_location(location_str):
     except Exception as e:
         print(f"Geocode error: {e}")
         return None
+
+
+def format_date(date_str, country):
+    """Format date based on country - USA gets MM/DD/YYYY, rest get DD/MM/YYYY"""
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    if country == "United States":
+        return dt.strftime("%m/%d/%Y")  # MM/DD/YYYY for USA
+    else:
+        return dt.strftime("%d/%m/%Y")  # DD/MM/YYYY for rest of world
 
 
 def get_weather(lat, lon, use_fahrenheit):
@@ -249,7 +360,7 @@ def get_forecast():
         precip = daily.get("precipitation_sum", [0]*7)[i]
         
         day_data = {
-            "date": daily["time"][i],
+            "date": format_date(daily["time"][i], loc_data["country"]),
             "day_of_week": datetime.strptime(daily["time"][i], "%Y-%m-%d").strftime("%A"),
             "temp_max": day_max,
             "temp_min": day_min,

@@ -152,7 +152,7 @@ function renderCurrent(current) {
             </div>
             <div class="stat">
                 <div class="stat-icon">🌬️</div>
-                <div class="stat-value">${Math.round(current.wind)} mph</div>
+                <div class="stat-value">${Math.round(current.wind)} ${current.speed_symbol || 'mph'}</div>
                 <div class="stat-label">Wind</div>
             </div>
             <div class="stat">
@@ -228,7 +228,7 @@ function renderForecast(advisories) {
                 '</div>' +
                 '<div class="weather-item">' +
                     '<div class="weather-label">Wind</div>' +
-                    '<div class="weather-value">' + Math.round(a.wind || 0) + ' mph</div>' +
+                    '<div class="weather-value">' + Math.round(a.wind || 0) + ' ' + (a.speed_symbol || 'mph') + '</div>' +
                 '</div>' +
                 '<div class="weather-item">' +
                     '<div class="weather-label">Clouds</div>' +
