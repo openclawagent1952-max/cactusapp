@@ -489,9 +489,11 @@ def get_forecast():
                 elif day_min < optimal_min:
                     exceptions.append(f"🧊 Cool temps: {day_min}{units['temp_symbol']} below optimal minimum ({optimal_min}{units['temp_symbol']})")
                 
-                # Heat
+                # Heat - alert when exceeding threshold, warning when approaching (within 5°F/3°C)
                 if day_max > heat_thresh:
                     exceptions.append(f"🔥 Heat stress: {day_max}{units['temp_symbol']} exceeds {heat_thresh}{units['temp_symbol']}")
+                elif day_max > heat_thresh - (5 if use_fahrenheit else 3):
+                    exceptions.append(f"🔥 Heat warning: {day_max}{units['temp_symbol']} approaching threshold ({heat_thresh}{units['temp_symbol']})")
                 
                 # Temperature volatility - rapid swings stress plants
                 if temp_swing > (40 if use_fahrenheit else 22):
@@ -532,7 +534,7 @@ def get_forecast():
                     break
                 elif any(x in exc for x in ["FROST WARNING", "COLD STRESS", "Heat stress", 
                                              "High humidity", "Low humidity", "rot risk",
-                                             "Extreme temp swing", "Large temp swing"]):
+                                             "Extreme temp swing", "Large temp swing", "Heat warning"]):
                     risk_level = "caution"
         day_data["risk_level"] = risk_level
         
