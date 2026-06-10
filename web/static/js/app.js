@@ -1,11 +1,20 @@
 /**
  * Cactus Weather Advisor - v1.0 Frontend
+ * Cache-busted: v5
  */
+
+console.log('JS Loaded: v5 -', new Date().toISOString());
 
 let selectedSpecies = ['pachanoi', 'peruvianus', 'bridgesii'];
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    // Display cache info
+    const cacheInfo = document.getElementById('cache-info');
+    if (cacheInfo) {
+        cacheInfo.textContent = 'JS v5 loaded at ' + new Date().toLocaleTimeString();
+    }
+    
     loadSpecies('Tampa');
     setupEventListeners();
     fetchForecast();
@@ -135,12 +144,18 @@ async function fetchForecast() {
     if (loadingDiv) loadingDiv.style.display = 'block';
     if (resultsDiv) resultsDiv.style.display = 'none';
     
+    // DEBUG: Log fetch start
+    console.log('FETCH START:', location, 'at', new Date().toLocaleTimeString());
+    
     try {
         await loadSpecies(location);
         
+        // Add cache-buster to fetch URL
+        const cacheBuster = Date.now();
         const params = new URLSearchParams({
             location: location,
-            species: selectedSpecies.join(',')
+            species: selectedSpecies.join(','),
+            _cb: cacheBuster
         });
         
         const resp = await fetch(`/api/forecast?${params}`);
@@ -148,7 +163,14 @@ async function fetchForecast() {
         
         if (data.error) throw new Error(data.error);
         
-        console.log('API Response - daily_advisories count:', data.daily_advisories?.length);
+        // DEBUG: Log what we got
+        console.log('FETCH SUCCESS:', data.daily_advisories?.length, 'days');
+        
+        // DEBUG: Check each day
+        data.daily_advisories?.forEach((day, i) => {
+            const excCount = Object.keys(day.species_exceptions || {}).length;
+            console.log(`  Day ${i+1} (${day.day_of_week}): ${excCount} species with alerts, risk=${day.risk_level}`);
+        });
         
         renderCurrent(data.current);
         renderForecast(data.daily_advisories);
