@@ -9,6 +9,38 @@
     <title>Trichocereus Weather Advisor</title>
     <!-- Timestamp-based cache buster - forces reload every time -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?ts={{ range(1, 1000000000) | random }}">
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <h1>🌵 Trichocereus Weather Advisor</h1>
+            <span class="version">version 1.0</span>
+        </header>
+
+        <section class="location-section">
+            <input type="text" id="location-input" placeholder="City, State/Country" value="Tampa">
+            <button id="search-btn">Get Forecast</button>
+        </section>
+
+        <section class="species-section">
+            <h2>Select Species</h2>
+            <div class="species-grid" id="species-grid"></div>
+        </section>
+
+        <section class="loading" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Consulting the weather spirits...</p>
+        </section>
+
+        <section class="results" id="results" style="display: none;">
+            <div class="current-conditions" id="current"></div>
+            <div id="forecast-status" style="padding: 10px; color: #666; font-size: 0.85rem;">
+                <span id="cache-info"></span>
+            </div>
+            <div class="forecast-grid" id="forecast"></div>
+        </section>
+    </div>
+
     <script src="{{ url_for('static', filename='js/app.js') }}?ts={{ range(1, 1000000000) | random }}"></script>
 </body>
 </html>
