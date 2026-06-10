@@ -601,26 +601,6 @@ button:hover {
   color: #15803d;
 }
 
-/* UV alerts */
-.exception-item.uv {
-  background: #fff7ed;
-  border-left: 4px solid #f59e0b;
-  color: #92400e;
-}
-
-/* Wind alerts */
-.exception-item.wind-chill {
-  background: #e0f2fe;
-  border-left: 4px solid #0284c7;
-  color: #0c4a6e;
-}
-
-.exception-item.wind {
-  background: #f3f4f6;
-  border-left: 4px solid #6b7280;
-  color: #374151;
-}
-
 .exception-icon {
   font-size: 1.2rem;
   flex-shrink: 0;
