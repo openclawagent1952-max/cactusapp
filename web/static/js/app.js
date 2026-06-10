@@ -51,33 +51,49 @@ async function loadSpecies(location = 'Tampa') {
         const params = new URLSearchParams({ location: location });
         const resp = await fetch(`/api/species?${params}`);
         const data = await resp.json();
-        renderSpecies(data.species);
+        renderSpecies(data.core_species, data.additional_species);
     } catch (e) {
         console.error('Failed to load species:', e);
     }
 }
 
-function renderSpecies(species) {
+function renderSpecies(coreSpecies, additionalSpecies) {
     const grid = document.getElementById('species-grid');
-    grid.innerHTML = species.map(s => {
-        const key = s.key.replace('trichocereus_', '');
-        const isSelected = selectedSpecies.includes(key);
-        const p = s.preferred_params;
-        
-        return `
-            <div class="species-card ${isSelected ? 'selected' : ''}" data-key="${key}"
-                 onclick="toggleSpecies('${key}')">
-                <div class="species-name">${s.name}</div>
-                <div class="species-latin">T. ${key}</div>
-                <div class="species-params">
-                    <div>☀️ Optimal: ${p.temp_day_range[0]}${s.temp_symbol}-${p.temp_day_range[1]}${s.temp_symbol}</div>
-                    <div>❄️ Frost limit: ${p.frost_threshold}${s.temp_symbol}</div>
-                    <div>🔥 Heat limit: ${p.heat_stress}${s.temp_symbol}</div>
-                    <div>💧 Humidity: ${p.humidity_range[0]}%-${p.humidity_range[1]}%</div>
-                </div>
+    
+    // Render core species (large cards, selected by default)
+    let html = '<h3 style="margin: 16px 0 8px 0; color: var(--hunter-green);">Core Species</h3>';
+    html += '<div class="core-species-grid">';
+    html += coreSpecies.map(s => renderSpeciesCard(s, true)).join('');
+    html += '</div>';
+    
+    // Render additional species (small cards, not selected)
+    html += '<h3 style="margin: 24px 0 8px 0; color: var(--hunter-green);">Additional Species</h3>';
+    html += '<div class="additional-species-grid">';
+    html += additionalSpecies.map(s => renderSpeciesCard(s, false)).join('');
+    html += '</div>';
+    
+    grid.innerHTML = html;
+}
+
+function renderSpeciesCard(s, isCore) {
+    const key = s.key.replace('trichocereus_', '');
+    const isSelected = selectedSpecies.includes(key);
+    const p = s.preferred_params;
+    
+    const cardClass = isCore ? 'species-card' : 'species-card additional';
+    
+    return `
+        <div class="${cardClass} ${isSelected ? 'selected' : ''}" data-key="${key}"
+             onclick="toggleSpecies('${key}')">
+            <div class="species-name">${s.name}</div>
+            <div class="species-latin">T. ${key}</div>
+            <div class="species-params">
+                <div>☀️ ${p.temp_day_range[0]}${s.temp_symbol}-${p.temp_day_range[1]}${s.temp_symbol}</div>
+                <div>❄️ ${p.frost_threshold}${s.temp_symbol}</div>
+                <div>🔥 ${p.heat_stress}${s.temp_symbol}</div>
             </div>
-        `;
-    }).join('');
+        </div>
+    `;
 }
 
 function toggleSpecies(key) {

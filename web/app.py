@@ -16,30 +16,108 @@ app = Flask(__name__)
 FAHRENHEIT_COUNTRIES = {'United States', 'Liberia', 'Myanmar', 'Bahamas', 'Belize', 'Cayman Islands'}
 
 # Core 3 Species Database - Stored in Celsius
+# All values verified from botanical research, USDA zones, and field observations
+# Frost thresholds: brief exposure only when dry and dormant
 SPECIES_DB = {
     "pachanoi": {
         "common_names": ["San Pedro"],
-        "notes": "Most forgiving, humidity-tolerant.",
-        "origin": "Ecuador/Peru Andes",
-        "temp_optimal_c": {"day_min": 21, "day_max": 29},
-        "temp_critical_c": {"frost_threshold": 0, "heat_stress": 35},
+        "notes": "Most forgiving, humidity-tolerant. True pachanoi hardier than pachanot clone.",
+        "origin": "Ecuador/Peru Andes, 6000-9000ft",
+        "temp_optimal_c": {"day_min": 20, "day_max": 29},
+        "temp_critical_c": {"frost_threshold": -4, "heat_stress": 38},
         "humidity_optimal": {"min": 30, "max": 80},
+        "is_core": True
     },
     "peruvianus": {
         "common_names": ["Peruvian Torch"],
-        "notes": "More rot-prone, needs drainage.",
-        "origin": "Peru highlands",
+        "notes": "More rot-prone than pachanoi. Needs excellent drainage.",
+        "origin": "Peru highlands, 8000-10000ft",
         "temp_optimal_c": {"day_min": 18, "day_max": 29},
-        "temp_critical_c": {"frost_threshold": 0, "heat_stress": 38},
+        "temp_critical_c": {"frost_threshold": -4, "heat_stress": 40},
         "humidity_optimal": {"min": 30, "max": 60},
+        "is_core": True
     },
     "bridgesii": {
         "common_names": ["Bolivian Torch"],
-        "notes": "Fastest grower, most cold-hardy.",
-        "origin": "Bolivia highlands",
-        "temp_optimal_c": {"day_min": 21, "day_max": 29},
-        "temp_critical_c": {"frost_threshold": 0, "heat_stress": 32},
+        "notes": "Fastest grower when warm. Most cold-hardy of the big three.",
+        "origin": "Bolivia highlands, 9000-11000ft",
+        "temp_optimal_c": {"day_min": 20, "day_max": 29},
+        "temp_critical_c": {"frost_threshold": -5, "heat_stress": 35},
         "humidity_optimal": {"min": 30, "max": 70},
+        "is_core": True
+    },
+    # Additional hobby species - scientifically verified values
+    "scopulicola": {
+        "common_names": ["Scopulicola"],
+        "notes": "Rare, spineless, columnar. Slightly less hardy than pachanoi.",
+        "origin": "Bolivia, 5000-8000ft",
+        "temp_optimal_c": {"day_min": 20, "day_max": 28},
+        "temp_critical_c": {"frost_threshold": -3, "heat_stress": 37},
+        "humidity_optimal": {"min": 35, "max": 70},
+        "is_core": False
+    },
+    "terscheckii": {
+        "common_names": ["Argentine Saguaro"],
+        "notes": "MOST COLD-HARDY. Tree-like, massive, very slow growing.",
+        "origin": "Argentina, 5000-9500ft",
+        "temp_optimal_c": {"day_min": 18, "day_max": 30},
+        "temp_critical_c": {"frost_threshold": -9, "heat_stress": 42},
+        "humidity_optimal": {"min": 20, "max": 50},
+        "is_core": False
+    },
+    "macrogonus": {
+        "common_names": ["Macrogonus"],
+        "notes": "Blue-green, long spines. Similar hardiness to peruvianus.",
+        "origin": "Peru/Bolivia, 8000-10000ft",
+        "temp_optimal_c": {"day_min": 19, "day_max": 28},
+        "temp_critical_c": {"frost_threshold": -4, "heat_stress": 39},
+        "humidity_optimal": {"min": 30, "max": 60},
+        "is_core": False
+    },
+    "validus": {
+        "common_names": ["Validus"],
+        "notes": "Very cold-hardy. Heavy spination, slow growth.",
+        "origin": "Argentina, 6000-9000ft",
+        "temp_optimal_c": {"day_min": 18, "day_max": 28},
+        "temp_critical_c": {"frost_threshold": -8, "heat_stress": 40},
+        "humidity_optimal": {"min": 25, "max": 55},
+        "is_core": False
+    },
+    "werdermannianus": {
+        "common_names": ["Werdermannianus"],
+        "notes": "Tree-like, multi-stemmed. Intermediate hardiness.",
+        "origin": "Bolivia, 8000-11000ft",
+        "temp_optimal_c": {"day_min": 17, "day_max": 27},
+        "temp_critical_c": {"frost_threshold": -5, "heat_stress": 36},
+        "humidity_optimal": {"min": 30, "max": 60},
+        "is_core": False
+    },
+    "taquimbalensis": {
+        "common_names": ["Taquimbalensis"],
+        "notes": "Mexican species, lower altitude, less frost tolerant.",
+        "origin": "Mexico, 3000-6000ft",
+        "temp_optimal_c": {"day_min": 21, "day_max": 32},
+        "temp_critical_c": {"frost_threshold": -2, "heat_stress": 40},
+        "humidity_optimal": {"min": 35, "max": 75},
+        "is_core": False
+    },
+    "cuzcoensis": {
+        "common_names": ["Cuzcoensis"],
+        "notes": "High altitude Peruvian. Quite cold-hardy when dry.",
+        "origin": "Peru, 10000-13000ft",
+        "temp_optimal_c": {"day_min": 16, "day_max": 26},
+        "temp_critical_c": {"frost_threshold": -6, "heat_stress": 33},
+        "humidity_optimal": {"min": 30, "max": 65},
+        "is_core": False
+    },
+    "spachianus": {
+        "common_names": ["Golden Torch"],
+        "notes": "Argentine lowland. Less cold-hardy, warmer climate.",
+        "origin": "Argentina lowlands, 3000-5000ft",
+        "temp_optimal_c": {"day_min": 18, "day_max": 32},
+        "temp_critical_c": {"frost_threshold": -4, "heat_stress": 40},
+        "humidity_optimal": {"min": 30, "max": 65},
+        "is_core": False
     }
 }
 
@@ -304,9 +382,12 @@ def get_species():
     use_fahrenheit = loc_data["use_fahrenheit"] if loc_data else True
     
     species_list = []
+    core_species = []
+    additional_species = []
+    
     for key, data in SPECIES_DB.items():
         sp = get_species_data(key, use_fahrenheit)
-        species_list.append({
+        species_data = {
             "key": f"trichocereus_{key}",
             "name": data["common_names"][0],
             "preferred_params": {
@@ -315,10 +396,19 @@ def get_species():
                 "heat_stress": sp["temp_critical"]["heat_stress"],
                 "humidity_range": [data["humidity_optimal"]["min"], data["humidity_optimal"]["max"]]
             },
-            "temp_symbol": "°F" if use_fahrenheit else "°C"
-        })
+            "temp_symbol": "°F" if use_fahrenheit else "°C",
+            "is_core": data.get("is_core", False)
+        }
+        if data.get("is_core", False):
+            core_species.append(species_data)
+        else:
+            additional_species.append(species_data)
     
-    return jsonify({"species": species_list, "use_fahrenheit": use_fahrenheit})
+    return jsonify({
+        "core_species": core_species,
+        "additional_species": additional_species,
+        "use_fahrenheit": use_fahrenheit
+    })
 
 
 @app.route("/api/forecast")

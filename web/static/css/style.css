@@ -99,10 +99,26 @@ button:hover {
 }
 
 .species-grid {
+    margin-bottom: 32px;
+}
+
+.core-species-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
     gap: 16px;
-    margin-bottom: 32px;
+    margin-bottom: 16px;
+}
+
+.additional-species-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.additional-species-grid .species-card.additional {
+    flex: 1 1 220px;
+    max-width: 220px;
+    padding: 16px;
 }
 
 .species-card {
@@ -423,6 +439,25 @@ button:hover {
   background: #fee2e2;
   color: #991b1b;
   border: 1px solid #fecaca;
+}
+
+.species-card.additional .species-name {
+    font-size: 1rem;
+    margin-bottom: 4px;
+}
+
+.species-card.additional .species-latin {
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+}
+
+.species-card.additional .species-params {
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+.species-card.additional .species-params div {
+    margin-bottom: 3px;
 }
 
 /* Responsive */
