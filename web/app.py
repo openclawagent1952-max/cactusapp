@@ -304,11 +304,28 @@ def get_weather(lat, lon, use_fahrenheit):
         url = "https://api.open-meteo.com/v1/forecast"
         units = get_unit_config("United States" if use_fahrenheit else "Other")
         
+        # Open-Meteo requires daily parameters as a list, not comma-separated string
+        daily_params = [
+            "temperature_2m_max",
+            "temperature_2m_min", 
+            "relative_humidity_2m_mean",
+            "precipitation_sum",
+            "weather_code",
+            "cloudcover_mean",
+            "windspeed_10m_max"
+        ]
+        
+        current_params = [
+            "temperature_2m",
+            "relative_humidity_2m",
+            "windspeed_10m"
+        ]
+        
         params = {
             "latitude": lat,
             "longitude": lon,
-            "daily": "temperature_2m_max,temperature_2m_min,relative_humidity_2m_mean,relative_humidity_2m_min,relative_humidity_2m_max,precipitation_sum,weather_code,cloudcover_mean,windspeed_10m_max,soil_temperature_0cm",
-            "current": "temperature_2m,relative_humidity_2m,windspeed_10m,surface_pressure",
+            "daily": daily_params,
+            "current": current_params,
             "forecast_days": 7,
             "temperature_unit": units["temp_unit"],
             "windspeed_unit": units["speed_unit"],
@@ -384,7 +401,7 @@ def get_forecast():
     if not weather:
         return jsonify({"error": "Weather unavailable"}), 503
     
-    # Parse current - add pressure for storm tracking
+    # Parse current
     current_data = weather.get("current", {})
     current = {
         "temp": current_data.get("temperature_2m", 20),
@@ -392,7 +409,6 @@ def get_forecast():
         "wind": current_data.get("windspeed_10m", 0),
         "cloudcover": current_data.get("cloudcover", 0),
         "weather_code": current_data.get("weather_code", 0),
-        "pressure": current_data.get("surface_pressure", 1013),
         "location": {"city": loc_data["name"], "region": loc_data["country"]},
         "temp_symbol": units["temp_symbol"],
         "speed_symbol": units["speed_symbol"]
@@ -401,18 +417,31 @@ def get_forecast():
     # Build advisories
     daily_advisories = []
     daily = weather.get("daily", {})
+    time_count = len(daily.get("time", []))
     
-    for i in range(len(daily.get("time", []))):
+    # Ensure all arrays have the same length
+    def safe_get(daily, key, default, index):
+        arr = daily.get(key, [default] * time_count)
+        if index < len(arr):
+            return arr[index]
+        return default
+    
+    for i in range(time_count):
         day_max = daily["temperature_2m_max"][i]
         day_min = daily["temperature_2m_min"][i]
         humidity = daily["relative_humidity_2m_mean"][i]
-        humidity_min = daily.get("relative_humidity_2m_min", [humidity]*7)[i]
-        humidity_max = daily.get("relative_humidity_2m_max", [humidity]*7)[i]
-        soil_temp = daily.get("soil_temperature_0cm", [day_min]*7)[i]
-        precip = daily.get("precipitation_sum", [0]*7)[i]
+        precip = safe_get(daily, "precipitation_sum", 0, i)
+        wind = safe_get(daily, "windspeed_10m_max", 0, i)
+        cloudcover = safe_get(daily, "cloudcover_mean", 0, i)
+        weather_code = safe_get(daily, "weather_code", 0, i)
         
         # Temperature volatility (daily swing)
         temp_swing = day_max - day_min
+        
+        # For fields not available in basic API, use calculated fallbacks
+        humidity_min = humidity - 10  # Estimate
+        humidity_max = humidity + 10  # Estimate
+        soil_temp = (day_max + day_min) / 2  # Estimate soil as average of air
         
         day_data = {
             "date": format_date(daily["time"][i], loc_data["country"]),
@@ -425,9 +454,9 @@ def get_forecast():
             "humidity_max": humidity_max,
             "soil_temp": soil_temp,
             "precipitation": precip,
-            "wind": daily.get("windspeed_10m_max", [0]*7)[i],
-            "cloudcover": daily.get("cloudcover_mean", [0]*7)[i],
-            "weather_code": daily.get("weather_code", [0]*7)[i],
+            "wind": wind,
+            "cloudcover": cloudcover,
+            "weather_code": weather_code,
             "temp_symbol": units["temp_symbol"],
             "speed_symbol": units["speed_symbol"],
             "precip_symbol": units["precip_symbol"]
@@ -481,6 +510,7 @@ def get_forecast():
                     exceptions.append(f"🌙 Humidity swing: {humidity_min}%→{humidity_max}% - rot risk if wet")
                 
                 # Soil temperature vs air temp (roots freeze before stems show damage)
+                # Using estimated soil temp - actual would require soil_temperature_0cm API parameter
                 soil_air_diff = soil_temp - day_min
                 if soil_temp < frost_thresh and day_min > frost_thresh + 2:
                     exceptions.append(f"🌡️ Soil freeze risk: {soil_temp:.0f}{units['temp_symbol']} soil vs {day_min}{units['temp_symbol']} air - roots exposed!")

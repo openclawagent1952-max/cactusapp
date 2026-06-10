@@ -139,11 +139,15 @@ async function fetchForecast() {
         
         if (data.error) throw new Error(data.error);
         
+        console.log('Forecast data:', data);
+        console.log('Daily advisories:', data.daily_advisories);
+        
         renderCurrent(data.current);
         renderForecast(data.daily_advisories);
         
         document.getElementById('results').style.display = 'block';
     } catch (e) {
+        console.error('Fetch error:', e);
         alert('Error: ' + e.message);
     } finally {
         document.getElementById('loading').style.display = 'none';
@@ -181,11 +185,6 @@ function renderCurrent(current) {
                 <div class="stat-value">${current.cloudcover}%</div>
                 <div class="stat-label">Cloud Cover</div>
             </div>
-            <div class="stat">
-                <div class="stat-icon">🌡️</div>
-                <div class="stat-value">${Math.round(current.pressure || 1013)}</div>
-                <div class="stat-label">Pressure (hPa)</div>
-            </div>
         </div>
     `;
 }
@@ -214,10 +213,9 @@ function renderForecast(advisories) {
                     else if (exc.includes('🧊')) excClass += ' cold';
                     else if (exc.includes('🔥')) excClass += ' heat';
                     else if (exc.includes('🦠')) excClass += ' rot';
-                    else if (exc.includes('💧')) excClass += ' humidity';
+                    else if (exc.includes('💧') || exc.includes('🌙')) excClass += ' humidity';
                     else if (exc.includes('📊')) excClass += ' volatility';
                     else if (exc.includes('🌡️')) excClass += ' soil';
-                    else if (exc.includes('🌙')) excClass += ' humidity';
 
                     return '<div class="' + excClass + '">' +
                         '<span class="exception-icon">' + exc.split(' ')[0] + '</span>' +

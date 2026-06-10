@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Test</title>
+</head>
+<body>
+    <div id="test-output"></div>
+    <script>
+        // Test the renderForecast function
+        const testData = [
+            {
+                day_of_week: "Wednesday",
+                date: "06/10/2026",
+                temp_max: 90.9,
+                temp_min: 73.8,
+                temp_swing: 17.1,
+                humidity: 65,
+                precipitation: 0,
+                weather_code: 0,
+                risk_level: "optimal",
+                species_exceptions: {},
+                daily_note: "Hot day ahead (90.9°F). No rain. Water if soil is dry.",
+                temp_symbol: "°F",
+                speed_symbol: "mph",
+                precip_symbol: "\""
+            }
+        ];
+
+        function getWeatherDesc(code) {
+            const codes = {0: 'Clear', 1: 'Mainly Clear'};
+            return codes[code] || 'Unknown';
+        }
+
+        function getWeatherIcon(code) {
+            const icons = {0: '☀️', 1: '🌤️'};
+            return icons[code] || '🌡️';
+        }
+
+        function renderForecast(advisories) {
+            try {
+                const result = advisories.slice(0, 7).map((a) => {
+                    const weatherDesc = getWeatherDesc(a.weather_code);
+                    const icon = getWeatherIcon(a.weather_code);
+                    const precip = (a.precipitation || 0).toFixed(2);
+                    const highTemp = a.temp_max !== undefined ? a.temp_max : (a.temp_max_f || 0);
+                    const lowTemp = a.temp_min !== undefined ? a.temp_min : (a.temp_min_f || 0);
+
+                    let exceptionsHTML = '';
+                    const exceptions = a.species_exceptions || {};
+
+                    if (Object.keys(exceptions).length === 0) {
+                        exceptionsHTML = '<div class="no-exceptions">✓ All species within normal ranges</div>';
+                    }
+
+                    const riskClass = a.risk_level || 'optimal';
+
+                    return '<div class="forecast-card ' + riskClass + '">' +
+                        '<div class="day">' + a.day_of_week + '</div>' +
+                        '<div>High: ' + Math.round(highTemp) + '° Low: ' + Math.round(lowTemp) + '°</div>' +
+                        '<div>Precip: ' + precip + a.precip_symbol + '</div>' +
+                        '<div class="daily-note">' + a.daily_note + '</div>' +
+                        '</div>';
+                }).join('');
+                
+                return result;
+            } catch (e) {
+                return 'Error: ' + e.message;
+            }
+        }
+
+        document.getElementById('test-output').innerHTML = renderForecast(testData);
+    </script>
+</body>
+</html>
