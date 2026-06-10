@@ -60,9 +60,23 @@ h1 {
     margin-bottom: 16px;
 }
 
+.location-label {
+    font-weight: 600;
+    color: var(--hunter-green);
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+}
+
 @media (min-width: 480px) {
     .location-section {
         flex-direction: row;
+        align-items: center;
+    }
+    
+    .location-label {
+        margin-bottom: 0;
+        margin-right: 8px;
+        white-space: nowrap;
     }
 }
 

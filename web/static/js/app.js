@@ -15,7 +15,13 @@ document.addEventListener('DOMContentLoaded', () => {
         cacheInfo.textContent = 'JS v7 (sorted) loaded at ' + new Date().toLocaleTimeString();
     }
     
-    loadSpecies('Tampa');
+    // Default to Denver
+    const locationInput = document.getElementById('location-input');
+    if (locationInput && !locationInput.value) {
+        locationInput.value = 'Denver, Colorado';
+    }
+    
+    loadSpecies('Denver, Colorado');
     setupEventListeners();
     fetchForecast();
 });
