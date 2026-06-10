@@ -1,9 +1,9 @@
 /**
  * Cactus Weather Advisor - v1.0 Frontend
- * Cache-busted: v7 - Sorted by severity
+ * Cache-busted: v8 - Fixed precip units
  */
 
-console.log('JS Loaded: v7 - Sorted by severity -', new Date().toISOString());
+console.log('JS Loaded: v8 - Fixed precip units -', new Date().toISOString());
 
 let selectedSpecies = ['pachanoi', 'peruvianus', 'bridgesii'];
 
@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Display cache info
     const cacheInfo = document.getElementById('cache-info');
     if (cacheInfo) {
-        cacheInfo.textContent = 'JS v7 (sorted) loaded at ' + new Date().toLocaleTimeString();
+        cacheInfo.textContent = 'JS v8 (fixed units) loaded at ' + new Date().toLocaleTimeString();
     }
     
     // Default to Denver
@@ -257,6 +257,7 @@ function renderForecast(advisories) {
             const weatherDesc = getWeatherDesc(day.weather_code);
             const icon = getWeatherIcon(day.weather_code);
             const precip = (day.precipitation || 0).toFixed(2);
+            const precipSymbol = day.precip_symbol || '"';
             const highTemp = day.temp_max !== undefined ? day.temp_max : 0;
             const lowTemp = day.temp_min !== undefined ? day.temp_min : 0;
             const tempSwing = day.temp_swing !== undefined ? day.temp_swing : (highTemp - lowTemp);
@@ -365,7 +366,7 @@ function renderForecast(advisories) {
                     </div>
                     <div class="weather-item">
                         <div class="weather-label">Precip</div>
-                        <div class="weather-value">${precip}"</div>
+                        <div class="weather-value">${precip}${precipSymbol}</div>
                     </div>
                 </div>
                 
