@@ -1,19 +1,14 @@
 /**
- * Cactus Weather Advisor - v2.0 DEBUG
+ * Cactus Weather Advisor - v2.0
  */
-
-console.log('JS DEBUG v2.0 -', new Date().toISOString());
 
 let selectedSpecies = ['pachanoi', 'peruvianus', 'bridgesii'];
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM ready');
-    
     const locationInput = document.getElementById('location-input');
     if (locationInput && !locationInput.value) {
         locationInput.value = 'Denver, Colorado';
     }
-    
     setupEventListeners();
     fetchForecast();
 });
@@ -42,79 +37,45 @@ function setupEventListeners() {
 }
 
 async function fetchForecast() {
-    console.log('fetchForecast() called');
-    
     const input = document.getElementById('location-input');
     const location = input ? input.value : 'Denver, Colorado';
     const loading = document.getElementById('loading');
     const results = document.getElementById('results');
     const forecast = document.getElementById('forecast');
     
-    console.log('Elements found:', {loading: !!loading, results: !!results, forecast: !!forecast});
-    
     if (loading) loading.style.display = 'block';
     if (results) results.style.display = 'none';
     
     try {
         const url = `/api/forecast?location=${encodeURIComponent(location)}&species=${selectedSpecies.join(',')}`;
-        console.log('Fetching:', url);
-        
         const resp = await fetch(url);
-        console.log('Response status:', resp.status);
-        
         const data = await resp.json();
-        console.log('Data received:', typeof data);
-        console.log('Data keys:', Object.keys(data));
-        console.log('Has daily_advisories:', 'daily_advisories' in data);
-        console.log('daily_advisories length:', data.daily_advisories?.length);
         
         if (loading) loading.style.display = 'none';
         
         if (data.error) {
-            console.error('API error:', data.error);
-            if (forecast) forecast.innerHTML = `<div class="error">API Error: ${data.error}</div>`;
+            if (forecast) forecast.innerHTML = `<div class="error">Error: ${data.error}</div>`;
             return;
         }
         
-        if (!data.daily_advisories) {
-            console.error('Missing daily_advisories');
-            if (forecast) forecast.innerHTML = `<div class="error">Missing daily_advisories</div>`;
-            return;
-        }
-        
-        if (data.daily_advisories.length === 0) {
-            console.error('Empty daily_advisories');
-            if (forecast) forecast.innerHTML = `<div class="error">Empty daily_advisories</div>`;
+        if (!data.daily_advisories || data.daily_advisories.length === 0) {
+            if (forecast) forecast.innerHTML = `<div class="error">No forecast data available</div>`;
             return;
         }
         
         if (results) results.style.display = 'block';
         
-        // Render current
-        if (data.current) {
-            console.log('Rendering current weather');
-            renderCurrent(data.current);
-        }
-        
-        // Render forecast
-        console.log('Rendering forecast');
+        renderCurrent(data.current);
         renderForecast(data.daily_advisories, data.units);
-        
     } catch (e) {
-        console.error('Fetch error:', e);
-        console.error('Error stack:', e.stack);
         if (loading) loading.style.display = 'none';
-        if (forecast) forecast.innerHTML = `<div class="error">Error: ${e.message}</div>`;
+        if (forecast) forecast.innerHTML = `<div class="error">Failed to load: ${e.message}</div>`;
     }
 }
 
 function renderCurrent(current) {
-    console.log('renderCurrent called');
     const div = document.getElementById('current');
-    if (!div) {
-        console.error('current element not found');
-        return;
-    }
+    if (!div) return;
     
     const uvInfo = getUVInfo(current.uv_index || 0);
     
@@ -133,18 +94,12 @@ function renderCurrent(current) {
 }
 
 function renderForecast(days, units) {
-    console.log('renderForecast called with', days?.length, 'days');
     const div = document.getElementById('forecast');
-    if (!div) {
-        console.error('forecast element not found');
-        return;
-    }
+    if (!div) return;
     
     let html = '';
     
-    days.forEach((day, idx) => {
-        console.log('Rendering day', idx, day.day_of_week);
-        
+    days.forEach(day => {
         const uvInfo = getUVInfo(day.uv_index || 0);
         
         html += `
@@ -174,6 +129,14 @@ function renderForecast(days, units) {
                         <div class="cell-label">Wind</div>
                         <div class="cell-value">${Math.round(day.wind || 0)} ${units?.speed_symbol || 'mph'}</div>
                     </div>
+                    <div class="weather-cell">
+                        <div class="cell-label">Rain</div>
+                        <div class="cell-value">${(day.precipitation || 0).toFixed(1)}${units?.precip_symbol || '"'}</div>
+                    </div>
+                    <div class="weather-cell">
+                        <div class="cell-label">Humidity</div>
+                        <div class="cell-value">${day.humidity || 0}%</div>
+                    </div>
                 </div>
                 
                 <div class="daily-note">${day.daily_note || ''}</div>
@@ -181,9 +144,7 @@ function renderForecast(days, units) {
         `;
     });
     
-    console.log('Setting HTML, length:', html.length);
     div.innerHTML = html;
-    console.log('Forecast rendered');
 }
 
 window.fetchForecast = fetchForecast;
