@@ -91,6 +91,7 @@ function renderSpeciesCard(s, isCore) {
                 <div>☀️ ${p.temp_day_range[0]}${s.temp_symbol}-${p.temp_day_range[1]}${s.temp_symbol}</div>
                 <div>❄️ ${p.frost_threshold}${s.temp_symbol}</div>
                 <div>🔥 ${p.heat_stress}${s.temp_symbol}</div>
+                <div>💧 Humidity: ${p.humidity_range[0]}%-${p.humidity_range[1]}%</div>
             </div>
         </div>
     `;
