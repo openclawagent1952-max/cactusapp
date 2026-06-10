@@ -1,9 +1,9 @@
 /**
  * Cactus Weather Advisor - v1.0 Frontend
- * Cache-busted: v6 - Grouped by species
+ * Cache-busted: v5
  */
 
-console.log('JS Loaded: v6 - Grouped alerts by species -', new Date().toISOString());
+console.log('JS Loaded: v5 -', new Date().toISOString());
 
 let selectedSpecies = ['pachanoi', 'peruvianus', 'bridgesii'];
 
@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Display cache info
     const cacheInfo = document.getElementById('cache-info');
     if (cacheInfo) {
-        cacheInfo.textContent = 'JS v6 (grouped by species) loaded at ' + new Date().toLocaleTimeString();
+        cacheInfo.textContent = 'JS v5 loaded at ' + new Date().toLocaleTimeString();
     }
     
     loadSpecies('Tampa');
@@ -257,7 +257,7 @@ function renderForecast(advisories) {
             const humidity = day.humidity || 0;
             const riskClass = day.risk_level || 'optimal';
             
-            // Build exceptions HTML - grouped by species, sorted by severity
+            // Build exceptions HTML
             let exceptionsHTML = '';
             const exceptions = day.species_exceptions || {};
             const exceptionKeys = Object.keys(exceptions);
@@ -265,64 +265,38 @@ function renderForecast(advisories) {
             if (exceptionKeys.length === 0) {
                 exceptionsHTML = '<div class="no-exceptions">✓ All species within normal ranges</div>';
             } else {
-                // Define severity order (higher = more critical)
-                const getSeverity = (exc) => {
-                    if (exc.includes('CRITICAL FROST')) return 10;
-                    if (exc.includes('Soil freeze')) return 9;
-                    if (exc.includes('Heat stress')) return 8;
-                    if (exc.includes('FROST WARNING')) return 7;
-                    if (exc.includes('Heat warning')) return 6;
-                    if (exc.includes('COLD STRESS')) return 5;
-                    if (exc.includes('Extreme temp swing')) return 4;
-                    if (exc.includes('Large temp swing')) return 3;
-                    if (exc.includes('rot risk')) return 2;
-                    if (exc.includes('Cool temps')) return 1;
-                    return 0;
-                };
-                
-                // Build species cards
                 exceptionKeys.forEach(spKey => {
                     const spData = exceptions[spKey];
                     if (spData && spData.exceptions && Array.isArray(spData.exceptions)) {
                         exceptionCount++;
-                        
-                        // Sort alerts by severity (highest first)
-                        const sortedExcs = [...spData.exceptions].sort((a, b) => getSeverity(b) - getSeverity(a));
-                        
-                        // Get most severe class for the card border
-                        let cardClass = 'species-alert-card';
-                        const maxSeverity = getSeverity(sortedExcs[0]);
-                        if (maxSeverity >= 8) cardClass += ' critical';
-                        else if (maxSeverity >= 5) cardClass += ' warning';
-                        else if (maxSeverity >= 3) cardClass += ' caution';
-                        
-                        // Build alert list
-                        const alertsHTML = sortedExcs.map(exc => {
-                            let alertClass = 'alert-item';
-                            let iconChar = exc.split(' ')[0];
-                            let restOfText = exc.substring(exc.indexOf(' ') + 1);
+                        spData.exceptions.forEach(exc => {
+                            let excClass = 'exception-item';
                             
-                            // Color code by type
-                            if (exc.includes('❄️')) alertClass += ' frost';
-                            else if (exc.includes('🧊')) alertClass += ' cold';
-                            else if (exc.includes('🔥')) alertClass += ' heat';
-                            else if (exc.includes('🦠')) alertClass += ' rot';
-                            else if (exc.includes('💧') || exc.includes('🌙')) alertClass += ' humidity';
-                            else if (exc.includes('📊')) alertClass += ' volatility';
-                            else if (exc.includes('🌡️')) alertClass += ' soil';
+                            // Heat alerts - 3 levels
+                            if (exc.includes('❄️ CRITICAL FROST')) excClass += ' critical-cold';
+                            else if (exc.includes('❄️ FROST WARNING')) excClass += ' frost';
+                            else if (exc.includes('🧊 COLD STRESS')) excClass += ' cold';
+                            else if (exc.includes('🧊 Cool temps')) excClass += ' cool';
+                            else if (exc.includes('🔥 Heat stress')) excClass += ' heat-critical';
+                            else if (exc.includes('🔥 Heat warning')) excClass += ' heat-warning';
+                            else if (exc.includes('🔥')) excClass += ' heat';
+                            else if (exc.includes('🦠')) excClass += ' rot';
+                            else if (exc.includes('💧') || exc.includes('🌙')) excClass += ' humidity';
+                            else if (exc.includes('📊')) excClass += ' volatility';
+                            else if (exc.includes('🌡️')) excClass += ' soil';
                             
-                            return `<div class="${alertClass}">${iconChar} ${restOfText}</div>`;
-                        }).join('');
-                        
-                        exceptionsHTML += `
-                            <div class="${cardClass}">
-                                <div class="species-alert-header">
-                                    <span class="species-name">${spData.common_name || spKey}</span>
-                                    <span class="alert-count">${sortedExcs.length} alert${sortedExcs.length > 1 ? 's' : ''}</span>
-                                </div>
-                                <div class="species-alerts">${alertsHTML}</div>
-                            </div>
-                        `;
+                            const commonName = spData.common_name || spKey;
+                            const iconChar = exc.split(' ')[0];
+                            const restOfText = exc.substring(exc.indexOf(' ') + 1);
+                            
+                            exceptionsHTML += `<div class="${excClass}">
+                                <span class="exception-icon">${iconChar}</span>
+                                <span class="exception-text">
+                                    <span class="exception-species">${commonName}</span>
+                                    ${restOfText}
+                                </span>
+                            </div>`;
+                        });
                     }
                 });
             }
